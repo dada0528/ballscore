@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>羽球計分板</title>
+<style>
+  :root{
+    --bg:#0b1020;--court:#162247;--line:#dbe7ff;--net:#ffffff99;
+    --text:#eaf0ff;--muted:#9fb1d9;--danger:#ff5d5d;--ok:#38bdf8;
+    --top:#7aa2ff;--bottom:#ffd166;--hud:#0b1228cc;
+
+    /* 發球格：蒂芬妮綠 */
+    --serve-tile:#81D8D0; --serve-border:#E9F7F5;
+
+    /* 底部工具列高度 */
+    --bar:64px;
+
+    /* 比分字體尺寸（可被全螢幕覆寫） */
+    --score-size:58px;
+  }
+
+  html,body{height:100dvh}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:linear-gradient(180deg,#0a0f22,#0f2147);
+    color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC","PingFang TC",sans-serif;
+    overflow:hidden;
+  }
+  /* 進入全螢幕時放大比分 */
+  body.fs{ --score-size: 96px; }
+  @media (max-width:480px){
+    body.fs{ --score-size: 88px; }
+  }
+  @media (min-width:1200px){
+    body.fs{ --score-size: 112px; }
+  }
+
+  /* 主舞台高度 = 視窗 - 底部工具列 */
+  main{
+    height:100dvh; display:grid; place-items:center;
+    padding-bottom:calc(var(--bar) + max(0px, env(safe-area-inset-bottom)));
+  }
+
+  /* 版面容器（直/橫向） */
+  .board{
+    position:relative; z-index:1;
+    background:#0f1733; border:1px solid #ffffff22; border-radius:14px; overflow:hidden;
+    width:100vw;
+    height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 8px);
+    max-width:100vw;
+    max-height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 8px);
+    display:grid;
+  }
+  .board.portrait{aspect-ratio:2/3}
+  .board.landscape{aspect-ratio:16/9}
+
+  /* 中央比分 HUD（固定置中；雙位數不跑位） */
+  .hud{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index:25; display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center;
+    padding:10px 16px; border-radius:14px; background:var(--hud); backdrop-filter:blur(6px);
+    border:1px solid #ffffff26; box-shadow:0 6px 20px #0008;
+  }
+  .score{display:flex; align-items:baseline; gap:6px; font-variant-numeric:tabular-nums}
+  .num{
+    display:inline-block; width:2.6ch; text-align:center;
+    font-size:var(--score-size); line-height:1; font-weight:900; letter-spacing:1px;
+    transition:font-size .2s ease;
+  }
+  .num.danger{color:var(--danger); text-shadow:0 0 12px rgba(255,93,93,.35)}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .dot.top{background:var(--top)} .dot.bottom{background:var(--bottom)}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:#ffffff14; border:1px solid #ffffff2a; font-size:12px}
+  .badge{display:none; padding:4px 10px; border-radius:999px; border:1px solid #ffb0b0; background:#ff6b6b22; color:#ffdede; font-size:12px; font-weight:700}
+  .badge.show{display:inline-block}
+
+  /* 球場 */
+  .court{position:relative; inset:0; background:var(--court)}
+  .net{
+    position:absolute; left:0; right:0; top:50%; height:2px; z-index:2;
+    background:linear-gradient(90deg,transparent,var(--net) 15%,var(--net) 85%,transparent);
+    box-shadow:0 0 6px var(--net)
+  }
+  .halves{
+    position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr;
+    border-top:2px solid var(--line); border-bottom:2px solid var(--line)
+  }
+  .half{position:relative; border-left:2px solid var(--line); border-right:2px solid var(--line); display:grid; grid-template-columns:1fr 1fr}
+  .cell{
+    position:relative; display:flex; align-items:center; justify-content:center;
+    border:1px solid #ffffff25; cursor:pointer; user-select:none;
+    transition:background-color .12s ease, box-shadow .12s ease, transform .03s ease, outline-color .12s ease;
+    background:
+      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
+      linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.06));
+  }
+  .half.top .cell{background:
+      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
+      linear-gradient(180deg,#1a2956,#112048)}
+  .half.bottom .cell{background:
+      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
+      linear-gradient(0deg,#243363,#1b2853)}
+  .cell:active{transform:scale(.995)}
+
+  /* 發球那一格：蒂芬妮綠地板（含回退背景） */
+  .cell.serve{
+    background:#81D8D0 !important;
+    background:
+      linear-gradient(180deg, rgba(129,216,208,1), rgba(100,190,180,1)) !important;
+    outline:3px solid var(--serve-border);
+    box-shadow:
+      inset 0 0 0 9999px rgba(129,216,208,.16),
+      0 0 0 2px rgba(0,0,0,.15),
+      0 8px 18px rgba(0,0,0,.35);
+  }
+
+  /* 球員名標籤（每格一個，小角落） */
+  .player-label{
+    position:absolute; inset:auto 6px 6px auto;  /* 右下角 */
+    font-size:12px; color:#eaf0ffcc; background:#00000044;
+    padding:2px 6px; border-radius:8px; border:1px solid #ffffff2a;
+    pointer-events:none;
+  }
+  .half.top .player-label{ inset:6px 6px auto auto; } /* 上半場放右上角 */
+
+  /* 底部控制列：可橫向滑動，永不截掉；全螢幕可自動隱藏 */
+  footer#ctrlBar{
+    position:fixed; left:0; right:0; bottom:0; height:var(--bar);
+    background:linear-gradient(0deg, rgba(7,12,30,.88), rgba(7,12,30,.58));
+    backdrop-filter:blur(8px); border-top:1px solid #ffffff24; z-index:40;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .bar-viewport{
+    position:relative; width:100%; height:100%;
+    overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    padding:8px calc(10px + max(0px, env(safe-area-inset-right))) 8px calc(10px + max(0px, env(safe-area-inset-left)));
+  }
+  .bar-viewport::-webkit-scrollbar{display:none}
+  .bar-content{display:inline-flex; gap:10px; align-items:center; height:100%; white-space:nowrap; padding:0 8px}
+  .bar-viewport::before,.bar-viewport::after{
+    content:""; position:absolute; top:0; bottom:0; width:28px; pointer-events:none;
+    background:linear-gradient(90deg, rgba(7,12,30,1), rgba(7,12,30,0));
+  }
+  .bar-viewport::after{ right:0; left:auto; transform:scaleX(-1) }
+  .seg{display:inline-flex; background:#ffffff12; border:1px solid #ffffff22; border-radius:999px; overflow:hidden}
+  .seg button{padding:10px 12px; border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; white-space:nowrap}
+  .seg button.active{background:#ffffff26; color:var(--text); font-weight:700}
+  .btn{padding:10px 12px; border:1px solid #ffffff2a; background:#ffffff18; color:var(--text); border-radius:10px; cursor:pointer; font-size:14px; white-space:nowrap}
+  .btn.ok{border-color:#38bdf850; background:#38bdf826}
+  .btn:active{transform:translateY(1px)}
+  #ctrlBar.hidden{transform:translateY(100%); transition:transform .25s ease}
+  #ctrlBar:not(.hidden){transition:transform .25s ease}
+
+  /* 贏家彈窗 */
+  .modal{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1000;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(3px)
+  }
+  .modal.visible{display:flex}
+  .dialog{background:#0f1c3d; border:1px solid #ffffff2a; border-radius:16px; box-shadow:0 10px 40px #0008; padding:18px 18px 14px; min-width:260px; max-width:90vw; text-align:center}
+  .dialog h2{margin:0 0 8px; font-size:22px}
+  .dialog p{margin:0 0 14px; color:#cfe3ffcc}
+  .dialog .actions{display:flex; gap:10px; justify-content:center}
+  .dialog .actions .btn{font-size:14px}
+
+  /* 開場姓名設定視窗 */
+  .setup{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:900;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(3px);
+  }
+  .setup.visible{display:flex}
+  .setup-card{
+    width:min(720px, 92vw); background:#0f1c3d; border:1px solid #ffffff2a; border-radius:16px; padding:16px; box-shadow:0 10px 40px #0008;
+  }
+  .setup-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
+  .setup .seg button{padding:8px 12px}
+  .mini-court{
+    position:relative; width:100%; aspect-ratio:16/9; background:#10224a; border:1px solid #ffffff22; border-radius:12px; overflow:hidden;
+    display:grid; grid-template-rows:1fr 1fr;
+  }
+  .mini-half{position:relative; border-left:2px solid var(--line); border-right:2px solid var(--line); display:grid; grid-template-columns:1fr 1fr}
+  .mini-net{position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent,var(--net) 15%,var(--net) 85%,transparent)}
+  .pos{
+    position:relative; border:1px dashed #ffffff33; display:flex; align-items:center; justify-content:center; padding:6px;
+  }
+  .pos label{position:absolute; top:6px; left:6px; font-size:12px; color:#cfe3ffb3}
+  .pos input{
+    width:90%; max-width:220px; padding:6px 8px; border-radius:8px; border:1px solid #ffffff33; background:#ffffff15; color:#eaf0ff;
+    outline:none;
+  }
+  .setup-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px}
+  .hint{font-size:12px; color:#cfe3ffb3}
+  @media (max-width:640px){
+    .num{font-size:46px}
+    .seg button,.btn{padding:10px 10px; font-size:13px}
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="board portrait" id="board">
+    <!-- 中央比分 HUD -->
+    <div class="hud" id="hud">
+      <div class="score" id="scoreTop">
+        <span class="dot top"></span><span>上方</span>
+        <span class="num" id="numTop">0</span><span class="tag" style="font-size:12px;opacity:.85">分</span>
+      </div>
+      <div class="pill"><span>發球：</span><strong id="servingSideLabel">下方</strong></div>
+      <div id="pointBadge" class="badge">局點 / 賽末點</div>
+      <div class="score" id="scoreBottom">
+        <span class="dot bottom"></span><span>下方</span>
+        <span class="num" id="numBottom">0</span><span class="tag" style="font-size:12px;opacity:.85">分</span>
+      </div>
+    </div>
+
+    <!-- 球場 -->
+    <div class="court">
+      <div class="net"></div>
+      <div class="halves">
+        <div class="half top" id="halfTop">
+          <div class="cell" data-half="top" data-col="left"><span class="player-label" id="label-TL"></span></div>
+          <div class="cell" data-half="top" data-col="right"><span class="player-label" id="label-TR"></span></div>
+        </div>
+        <div class="half bottom" id="halfBottom">
+          <div class="cell" data-half="bottom" data-col="left"><span class="player-label" id="label-BL"></span></div>
+          <div class="cell" data-half="bottom" data-col="right"><span class="player-label" id="label-BR"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 底部可滑工具列（第一個就是開始比賽） -->
+<footer id="ctrlBar">
+  <div class="bar-viewport">
+    <div class="bar-content">
+      <button class="btn ok" id="startBtn">開始比賽</button>
+
+      <div class="seg" id="initServeSeg">
+        <button data-side="top">上方發球</button>
+        <button data-side="bottom" class="active">下方發球</button>
+      </div>
+
+      <div class="seg" id="orientSeg">
+        <button data-orient="portrait" class="active">直向</button>
+        <button data-orient="landscape">橫向</button>
+      </div>
+
+      <div class="seg" id="voiceSeg">
+        <button data-voice="on" class="active">語音: 開</button>
+        <button data-voice="off">語音: 關</button>
+      </div>
+
+      <button class="btn" id="undoBtn">悔棋</button>
+      <button class="btn" id="fsBtn">全螢幕</button>
+    </div>
+  </div>
+</footer>
+
+<!-- 贏家彈窗 -->
+<div class="modal" id="winModal">
+  <div class="dialog" id="winDialog">
+    <h2 id="winTitle">比賽結束</h2>
+    <p id="winDesc">恭喜！</p>
+    <div class="actions">
+      <button class="btn ok" id="playAgainBtn">再來一局</button>
+      <button class="btn" id="closeModalBtn">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- 開場姓名設定視窗 -->
+<div class="setup" id="setupModal">
+  <div class="setup-card">
+    <div class="setup-row">
+      <strong>比賽模式：</strong>
+      <div class="seg" id="modeSeg">
+        <button data-mode="singles" class="active">單打</button>
+        <button data-mode="doubles">雙打</button>
+      </div>
+      <span class="hint">請在對應站位輸入姓名，或直接「快速開始」使用預設名稱。</span>
+    </div>
+
+    <div class="mini-court">
+      <div class="mini-net"></div>
+      <div class="mini-half">
+        <div class="pos"><label>上方・左邊 (TL)</label><input id="name-TL" placeholder="上方左"/></div>
+        <div class="pos"><label>上方・右邊 (TR)</label><input id="name-TR" placeholder="上方右"/></div>
+      </div>
+      <div class="mini-half">
+        <div class="pos"><label>下方・左邊 (BL)</label><input id="name-BL" placeholder="下方左"/></div>
+        <div class="pos"><label>下方・右邊 (BR)</label><input id="name-BR" placeholder="下方右"/></div>
+      </div>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn" id="quickStartBtn">快速開始（預設姓名）</button>
+      <button class="btn ok" id="applyNamesBtn">開始比賽</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const state={mode:'singles',scoreTop:0,scoreBottom:0,servingSide:'bottom',history:[],gameOver:false};
+  let pendingInitServe='bottom', voiceOn=true;
+
+  // 名單（四格對應）
+  const names={TL:'Player1', TR:'Player2', BL:'Player3', BR:'Player4'};
+
+  // DOM
+  const board=document.getElementById('board');
+  const numTop=document.getElementById('numTop');
+  const numBottom=document.getElementById('numBottom');
+  const servingSideLabel=document.getElementById('servingSideLabel');
+  const pointBadge=document.getElementById('pointBadge');
+  const cells=[...document.querySelectorAll('.cell')];
+  const labels={
+    TL:document.getElementById('label-TL'),
+    TR:document.getElementById('label-TR'),
+    BL:document.getElementById('label-BL'),
+    BR:document.getElementById('label-BR'),
+  };
+
+  const startBtn=document.getElementById('startBtn');
+  const undoBtn=document.getElementById('undoBtn');
+  const fsBtn=document.getElementById('fsBtn');
+  const ctrlBar=document.getElementById('ctrlBar');
+
+  // Setup modal
+  const setupModal=document.getElementById('setupModal');
+  const modeSeg=document.getElementById('modeSeg');
+  const nameInputs={
+    TL:document.getElementById('name-TL'),
+    TR:document.getElementById('name-TR'),
+    BL:document.getElementById('name-BL'),
+    BR:document.getElementById('name-BR'),
+  };
+  const applyNamesBtn=document.getElementById('applyNamesBtn');
+  const quickStartBtn=document.getElementById('quickStartBtn');
+
+  // Winner modal
+  const modal=document.getElementById('winModal');
+  const dialog=document.getElementById('winDialog');
+  const winTitle=document.getElementById('winTitle');
+  const winDesc=document.getElementById('winDesc');
+  const playAgainBtn=document.getElementById('playAgainBtn');
+  const closeModalBtn=document.getElementById('closeModalBtn');
+
+  /* ===== 規則 ===== */
+  function resolveServeBox(){
+    const s=state.servingSide,score=s==='top'?state.scoreTop:state.scoreBottom;
+    const even=score%2===0;
+    if(s==='bottom') return even?['bottom','right']:['bottom','left'];
+    return even?['top','left']:['top','right']; // 上方鏡像（面向網）
+  }
+  function haveWinner(){
+    const A=state.scoreTop,B=state.scoreBottom;
+    const max=Math.max(A,B),min=Math.min(A,B);
+    if((max>=21 && max-min>=2) || max===30) return A>B?'top':'bottom';
+    return null;
+  }
+  function gamePointMessage(){
+    const A=state.scoreTop,B=state.scoreBottom;
+    if(A===29 && B===29) return '雙方賽末點';
+    if(A>=20 && A-B===1) return '上方局點';
+    if(B>=20 && B-A===1) return '下方局點';
+    return '';
+  }
+
+  /* ===== UI ===== */
+  function updateDigitsColor(){
+    numTop.classList.toggle('danger', state.scoreTop>=20);
+    numBottom.classList.toggle('danger', state.scoreBottom>=20);
+  }
+  function updateServeTile(){
+    cells.forEach(c=>c.classList.remove('serve'));
+    const [h,c]=resolveServeBox();
+    const tile=document.querySelector(`.cell[data-half="${h}"][data-col="${c}"]`);
+    if(tile) tile.classList.add('serve');
+  }
+  function updateBadges(){
+    if(!pointBadge) return;
+    const msg=gamePointMessage();
+    pointBadge.textContent = msg || '局點 / 賽末點';
+    pointBadge.classList.toggle('show', !!msg);
+  }
+  function refreshNameLabels(){
+    labels.TL.textContent=names.TL;
+    labels.TR.textContent=names.TR;
+    labels.BL.textContent=names.BL;
+    labels.BR.textContent=names.BR;
+  }
+  function updateAll(){
+    numTop.textContent=state.scoreTop;
+    numBottom.textContent=state.scoreBottom;
+    servingSideLabel.textContent=state.servingSide==='top'?'上方':'下方';
+    updateDigitsColor();
+    updateServeTile();
+    updateBadges();
+    refreshNameLabels();
+  }
+
+  /* ===== 語音（序列播放，避免互相取消） ===== */
+  function speakSequence(texts){
+    if(!voiceOn) return;
+    if(!('speechSynthesis' in window)) return;
+    try{
+      window.speechSynthesis.cancel();
+      const queue = texts.filter(t=>t && t.trim().length>0);
+      const speakNext = () => {
+        if(queue.length===0) return;
+        const text = queue.shift();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang='zh-TW'; u.rate=1; u.pitch=1; u.volume=1;
+        u.onend = speakNext;
+        window.speechSynthesis.speak(u);
+      };
+      speakNext();
+    }catch(e){}
+  }
+  // 得分方分數優先
+  function scoreText(lastScorer=null){
+    const A=state.scoreTop, B=state.scoreBottom;
+    let first, second;
+    if(lastScorer==='top'){ first=A; second=B; }
+    else if(lastScorer==='bottom'){ first=B; second=A; }
+    else { first=A; second=B; }
+    const gpMsg = gamePointMessage();
+    return gpMsg ? `${first} 比 ${second}，${gpMsg}` : `${first} 比 ${second}`;
+  }
+  function currentServingNameAndPos(){
+    const [h,c]=resolveServeBox();
+    let name='';
+    if(h==='top' && c==='left') name=names.TL;
+    if(h==='top' && c==='right') name=names.TR;
+    if(h==='bottom' && c==='left') name=names.BL;
+    if(h==='bottom' && c==='right') name=names.BR;
+    const halfText=h==='top'?'上方':'下方';
+    const colText=c==='left'?'左邊':'右邊';
+    return {name, halfText, colText};
+  }
+  function servingText(){
+    const {name, halfText, colText}=currentServingNameAndPos();
+    return name ? `${name} ${halfText}${colText}發球。` : '';
+  }
+
+  /* ===== 雙打輪轉（左右互換） ===== */
+  function rotateIfServingSideWon(winner, prevServer){
+    if(winner!==prevServer) return; // 接發方贏分→不輪轉
+    if(state.mode==='singles') return; // 單打左右同人，不必處理
+    if(winner==='top'){
+      const tmp=names.TL; names.TL=names.TR; names.TR=tmp;
+    }else{
+      const tmp=names.BL; names.BL=names.BR; names.BR=tmp;
+    }
+  }
+
+  /* ===== 記分 ===== */
+  function scorePoint(side){
+    if(state.gameOver) return;
+    const prevServer = state.servingSide;
+
+    state.history.push({...state, names: {...names}});
+    if(side==='top') state.scoreTop++; else state.scoreBottom++;
+    state.servingSide=side;
+
+    // 輪轉（只有「發球方得分」才左右互換）
+    rotateIfServingSideWon(side, prevServer);
+
+    const w=haveWinner();
+    updateAll();
+
+    if(w){
+      // 比賽結束：播比分（得分方在前）→播最終結果
+      const texts = [
+        scoreText(side),
+        `比賽結束，${w==='top'?'上方':'下方'} 獲勝。最終比分 ${state.scoreTop} 比 ${state.scoreBottom}`
+      ];
+      speakSequence(texts);
+      showWinner(w);
+      state.gameOver=true;
+      return;
+    }
+
+    // 一般得分：先播比分，再播發球者
+    speakSequence([ scoreText(side), servingText() ]);
+  }
+
+  /* ===== 點擊半場 ===== */
+  document.getElementById('halfTop').addEventListener('click',()=>scorePoint('top'));
+  document.getElementById('halfBottom').addEventListener('click',()=>scorePoint('bottom'));
+
+  /* ===== 控制列：開局發球／直橫切換／語音開關 ===== */
+  document.getElementById('initServeSeg').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    pendingInitServe=btn.dataset.side;
+    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b===btn));
+  });
+  document.getElementById('orientSeg').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    const orient=btn.dataset.orient;
+    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b===btn));
+    board.classList.remove('portrait','landscape');
+    board.classList.add(orient);
+  });
+  document.getElementById('voiceSeg').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    voiceOn = btn.dataset.voice==='on';
+    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b===btn));
+    if(voiceOn) speakSequence(['語音播報已開啟']); else window.speechSynthesis?.cancel();
+  });
+
+  /* ===== 開始比賽（開啟姓名設定）／悔棋 ===== */
+  startBtn.addEventListener('click', openSetup);
+  function startNewMatch(serving='bottom'){
+    state.scoreTop=0; state.scoreBottom=0; state.gameOver=false;
+    state.servingSide=serving; state.history=[];
+    updateAll();
+    // 先說比賽開始，再說第一拍發球者
+    speakSequence(['比賽開始', servingText() ]);
+  }
+  undoBtn.addEventListener('click',()=>{
+    if(state.history.length){
+      const prev = state.history.pop();
+      state.mode = prev.mode ?? state.mode;
+      state.scoreTop = prev.scoreTop;
+      state.scoreBottom = prev.scoreBottom;
+      state.servingSide = prev.servingSide;
+      state.gameOver = prev.gameOver ?? false;
+      if(prev.names) Object.assign(names, prev.names);
+      updateAll();
+      // 悔棋後播目前比分（不特別指定得分方），再播當前發球者
+      speakSequence([ scoreText(null), servingText() ]);
+    }
+  });
+
+  /* ===== 贏家彈窗 ===== */
+  function showWinner(winner){
+    winTitle.textContent='比賽結束';
+    winDesc.textContent=(winner==='top'?'上方':'下方')+' 獲勝！最終比分：'+state.scoreTop+' : '+state.scoreBottom;
+    modal.classList.add('visible');
+    setTimeout(()=>playAgainBtn.focus(),0);
+  }
+  function hideModal(){ modal.classList.remove('visible'); }
+  playAgainBtn.addEventListener('click',()=>{ hideModal(); openSetup(); });
+  closeModalBtn.addEventListener('click', hideModal);
+  modal.addEventListener('click',e=>{ if(!dialog.contains(e.target)) hideModal(); });
+  dialog.addEventListener('click',e=> e.stopPropagation());
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('visible')) hideModal(); });
+
+  /* ===== 全螢幕＋自動隱藏控制列（並放大比分） ===== */
+  let hideTimer=null;
+  function enterFS(){(document.documentElement.requestFullscreen?.()||document.body.requestFullscreen?.())?.catch(err=>alert("全螢幕失敗："+err));}
+  function exitFS(){document.exitFullscreen?.();}
+  fsBtn.addEventListener('click',()=>{ if(!document.fullscreenElement) enterFS(); else exitFS(); });
+  function showBarTemporarily(){
+    if(!document.fullscreenElement) return;
+    ctrlBar.classList.remove('hidden');
+    if(hideTimer) clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2500);
+  }
+  document.addEventListener('fullscreenchange',()=>{
+    if(document.fullscreenElement){
+      document.body.classList.add('fs');  // 放大比分
+      showBarTemporarily();
+    }else{
+      document.body.classList.remove('fs'); // 還原比分大小
+      ctrlBar.classList.remove('hidden');
+      if(hideTimer) clearTimeout(hideTimer);
+    }
+  });
+  ['pointermove','touchstart','click','keydown'].forEach(ev=>{
+    document.addEventListener(ev, showBarTemporarily, {passive:true});
+  });
+
+  /* ===== 開場姓名/模式設定流程 ===== */
+  function openSetup(){
+    syncInputsForMode();
+    // 將現有 names 帶入（方便連續開局）
+    nameInputs.TL.value = names.TL || '';
+    nameInputs.TR.value = names.TR || '';
+    nameInputs.BL.value = names.BL || '';
+    nameInputs.BR.value = names.BR || '';
+    setupModal.classList.add('visible');
+  }
+  function closeSetup(){ setupModal.classList.remove('visible'); }
+
+  modeSeg.addEventListener('click', (e)=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    state.mode=btn.dataset.mode;
+    [...modeSeg.querySelectorAll('button')].forEach(b=>b.classList.toggle('active', b===btn));
+    syncInputsForMode();
+  });
+
+  function syncInputsForMode(){
+    const singles = state.mode==='singles';
+    // 單打：右側兩格淡出，但可輸入
+    nameInputs.TR.parentElement.style.opacity = singles ? '.45' : '1';
+    nameInputs.BR.parentElement.style.opacity = singles ? '.45' : '1';
+  }
+
+  function applyNames(useDefaultsIfEmpty){
+    const getOrDefault=(v, d)=> (v && v.trim().length>0) ? v.trim() : d;
+    if(state.mode==='singles'){
+      const topName = getOrDefault(nameInputs.TL.value, useDefaultsIfEmpty? 'Player1':'' ) || 'Player1';
+      const bottomName = getOrDefault(nameInputs.BL.value, useDefaultsIfEmpty? 'Player3':'' ) || 'Player3';
+      names.TL = topName; names.TR = topName;
+      names.BL = bottomName; names.BR = bottomName;
+    }else{
+      names.TL = getOrDefault(nameInputs.TL.value, useDefaultsIfEmpty? 'Player1':'' ) || 'Player1';
+      names.TR = getOrDefault(nameInputs.TR.value, useDefaultsIfEmpty? 'Player2':'' ) || 'Player2';
+      names.BL = getOrDefault(nameInputs.BL.value, useDefaultsIfEmpty? 'Player3':'' ) || 'Player3';
+      names.BR = getOrDefault(nameInputs.BR.value, useDefaultsIfEmpty? 'Player4':'' ) || 'Player4';
+    }
+    closeSetup();
+    startNewMatch(pendingInitServe);
+  }
+
+  applyNamesBtn.addEventListener('click', ()=> applyNames(true));
+  quickStartBtn.addEventListener('click', ()=>{
+    if(state.mode==='singles'){
+      names.TL='Player1'; names.TR='Player1';
+      names.BL='Player3'; names.BR='Player3';
+    }else{
+      names.TL='Player1'; names.TR='Player2'; names.BL='Player3'; names.BR='Player4';
+    }
+    closeSetup();
+    startNewMatch(pendingInitServe);
+  });
+
+  /* ===== 初始 ===== */
+  updateAll();
+})();
+</script>
+</body>
+</html>
