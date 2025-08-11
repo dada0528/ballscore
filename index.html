@@ -440,12 +440,18 @@
     if(h==='bottom' && c==='left') name=names.BL;
     if(h==='bottom' && c==='right') name=names.BR;
     const halfText=h==='top'?'上方':'下方';
-    const colText=c==='left'?'左邊':'右邊';
-    return {name, halfText, colText};
+    // 語音左/右：上方需鏡像（以面對網為準）
+    let sideText;
+    if(h==='top'){
+      sideText = c==='left' ? '右邊' : '左邊'; // 鏡像
+    }else{
+      sideText = c==='left' ? '左邊' : '右邊';
+    }
+    return {name, halfText, sideText};
   }
   function servingText(){
-    const {name, halfText, colText}=currentServingNameAndPos();
-    return name ? `${name} ${halfText}${colText}發球。` : '';
+    const {name, halfText, sideText}=currentServingNameAndPos();
+    return name ? `${name} ${halfText}${sideText}發球。` : '';
   }
 
   /* ===== 雙打輪轉（左右互換） ===== */
