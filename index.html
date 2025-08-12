@@ -16,7 +16,7 @@
     /* 底部工具列高度 */
     --bar:64px;
 
-    /* 比分字體尺寸（可被全螢幕覆寫） */
+    /* 比分字體尺寸（JS 在全螢幕時會覆寫） */
     --score-size:58px;
   }
 
@@ -28,14 +28,6 @@
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC","PingFang TC",sans-serif;
     overflow:hidden;
   }
-  /* 進入全螢幕時放大比分（再放大一些） */
-  body.fs{ --score-size: 132px; }
-  @media (max-width:480px){
-    body.fs{ --score-size: 120px; }
-  }
-  @media (min-width:1200px){
-    body.fs{ --score-size: 160px; }
-  }
 
   /* 主舞台高度 = 視窗 - 底部工具列 */
   main{
@@ -43,7 +35,7 @@
     padding-bottom:calc(var(--bar) + max(0px, env(safe-area-inset-bottom)));
   }
 
-  /* 版面容器（固定比例，拿掉直/橫切換） */
+  /* 版面容器（固定比例） */
   .board{
     position:relative; z-index:1;
     background:#0f1733; border:1px solid #ffffff22; border-radius:14px; overflow:hidden;
@@ -52,7 +44,7 @@
     max-width:100vw;
     max-height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 8px);
     display:grid;
-    aspect-ratio:16/9; /* 使用橫向球場視覺，但自動等比縮放於可視區 */
+    aspect-ratio:16/9;
   }
 
   /* 中央比分 HUD（固定置中；雙位數不跑位） */
@@ -151,8 +143,6 @@
   .btn:active{transform:translateY(1px)}
   #ctrlBar.hidden{transform:translateY(100%); transition:transform .25s ease}
   #ctrlBar:not(.hidden){transition:transform .25s ease}
-  .hide-on-fs{display:inline-flex}
-  body.fs .hide-on-fs{display:none}
 
   /* 贏家彈窗 */
   .modal{
@@ -245,8 +235,7 @@
         <button data-side="bottom" class="active">下方發球</button>
       </div>
 
-      <!-- 移除直向/橫向切換 -->
-      <div class="seg hide-on-fs" id="voiceSeg">
+      <div class="seg" id="voiceSeg">
         <button data-voice="on" class="active">語音: 開</button>
         <button data-voice="off">語音: 關</button>
       </div>
@@ -304,6 +293,7 @@
 (function(){
   const state={mode:'singles',scoreTop:0,scoreBottom:0,servingSide:'bottom',history:[],gameOver:false};
   let pendingInitServe='bottom', voiceOn=true;
+  let resizeHandlerAttached=false;
 
   // 名單（四格對應）
   const names={TL:'Player1', TR:'Player2', BL:'Player3', BR:'Player4'};
@@ -439,7 +429,7 @@
     // 語音左/右：上方需鏡像（以面對網為準）
     let sideText;
     if(h==='top'){
-      sideText = c==='left' ? '右邊' : '左邊'; // 鏡像
+      sideText = c==='left' ? '右邊' : '左邊';
     }else{
       sideText = c==='left' ? '左邊' : '右邊';
     }
@@ -452,8 +442,8 @@
 
   /* ===== 雙打輪轉（左右互換） ===== */
   function rotateIfServingSideWon(winner, prevServer){
-    if(winner!==prevServer) return; // 接發方贏分→不輪轉
-    if(state.mode==='singles') return; // 單打左右同人，不必處理
+    if(winner!==prevServer) return;
+    if(state.mode==='singles') return;
     if(winner==='top'){
       const tmp=names.TL; names.TL=names.TR; names.TR=tmp;
     }else{
@@ -470,14 +460,12 @@
     if(side==='top') state.scoreTop++; else state.scoreBottom++;
     state.servingSide=side;
 
-    // 輪轉（只有「發球方得分」才左右互換）
     rotateIfServingSideWon(side, prevServer);
 
     const w=haveWinner();
     updateAll();
 
     if(w){
-      // 比賽結束：播比分（得分方在前）→播最終結果
       const texts = [
         scoreText(side),
         `比賽結束，${w==='top'?'上方':'下方'} 獲勝。最終比分 ${state.scoreTop} 比 ${state.scoreBottom}`
@@ -488,7 +476,6 @@
       return;
     }
 
-    // 一般得分：先播比分，再播發球者
     speakSequence([ scoreText(side), servingText() ]);
   }
 
@@ -515,7 +502,6 @@
     state.scoreTop=0; state.scoreBottom=0; state.gameOver=false;
     state.servingSide=serving; state.history=[];
     updateAll();
-    // 先說比賽開始，再說第一拍發球者
     speakSequence(['比賽開始', servingText() ]);
   }
   undoBtn.addEventListener('click',()=>{
@@ -528,7 +514,6 @@
       state.gameOver = prev.gameOver ?? false;
       if(prev.names) Object.assign(names, prev.names);
       updateAll();
-      // 悔棋後播目前比分（不特別指定得分方），再播當前發球者
       speakSequence([ scoreText(null), servingText() ]);
     }
   });
@@ -547,27 +532,64 @@
   dialog.addEventListener('click',e=> e.stopPropagation());
   document.addEventListener('keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('visible')) hideModal(); });
 
-  /* ===== 全螢幕＋自動隱藏控制列（並放大比分） ===== */
+  /* ===== 全螢幕＋自動隱藏控制列（並動態放大比分：直/橫皆適用） ===== */
   let hideTimer=null;
-  function enterFS(){(document.documentElement.requestFullscreen?.()||document.body.requestFullscreen?.())?.catch(err=>alert("全螢幕失敗："+err));}
-  function exitFS(){document.exitFullscreen?.();}
+
+  function enterFS(){
+    const target = document.documentElement;
+    (target.requestFullscreen?.() || document.body.requestFullscreen?.())?.catch(err=>alert("全螢幕失敗："+err));
+  }
+  function exitFS(){ document.exitFullscreen?.(); }
+
   fsBtn.addEventListener('click',()=>{ if(!document.fullscreenElement) enterFS(); else exitFS(); });
+
   function showBarTemporarily(){
     if(!document.fullscreenElement) return;
     ctrlBar.classList.remove('hidden');
     if(hideTimer) clearTimeout(hideTimer);
     hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2500);
   }
+
+  function updateFullscreenScoreSize(){
+    if(!document.fullscreenElement){
+      // 離開全螢幕：還原
+      document.documentElement.style.removeProperty('--score-size');
+      return;
+    }
+    // 用較短邊動態計算，確保直向也會變大
+    const minSide = Math.min(window.innerWidth, window.innerHeight);
+    // 比例可調，並加上邊界避免過小或過大
+    const px = Math.max(96, Math.min(260, Math.round(minSide * 0.22)));
+    document.documentElement.style.setProperty('--score-size', px + 'px');
+  }
+
+  function onResizeWhileFS(){
+    updateFullscreenScoreSize();
+  }
+
   document.addEventListener('fullscreenchange',()=>{
     if(document.fullscreenElement){
-      document.body.classList.add('fs');  // 放大比分
+      // 進入全螢幕：顯示控制列一下並自動隱藏；啟動動態字體大小（含直向）
       showBarTemporarily();
+      updateFullscreenScoreSize();
+      if(!resizeHandlerAttached){
+        window.addEventListener('resize', onResizeWhileFS, {passive:true});
+        window.addEventListener('orientationchange', onResizeWhileFS, {passive:true});
+        resizeHandlerAttached=true;
+      }
     }else{
-      document.body.classList.remove('fs'); // 還原比分大小
+      // 離開全螢幕：清理
       ctrlBar.classList.remove('hidden');
       if(hideTimer) clearTimeout(hideTimer);
+      updateFullscreenScoreSize();
+      if(resizeHandlerAttached){
+        window.removeEventListener('resize', onResizeWhileFS);
+        window.removeEventListener('orientationchange', onResizeWhileFS);
+        resizeHandlerAttached=false;
+      }
     }
   });
+
   ['pointermove','touchstart','click','keydown'].forEach(ev=>{
     document.addEventListener(ev, showBarTemporarily, {passive:true});
   });
@@ -575,7 +597,6 @@
   /* ===== 開場姓名/模式設定流程 ===== */
   function openSetup(){
     syncInputsForMode();
-    // 將現有 names 帶入（方便連續開局）
     nameInputs.TL.value = names.TL || '';
     nameInputs.TR.value = names.TR || '';
     nameInputs.BL.value = names.BL || '';
@@ -593,7 +614,6 @@
 
   function syncInputsForMode(){
     const singles = state.mode==='singles';
-    // 單打：右側兩格淡出，但可輸入
     nameInputs.TR.parentElement.style.opacity = singles ? '.45' : '1';
     nameInputs.BR.parentElement.style.opacity = singles ? '.45' : '1';
   }
