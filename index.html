@@ -3,246 +3,343 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>羽球計分板</title>
+<title>羽球計分板 · Fresh</title>
 <style>
+  /* ========= 清新主題 ========= */
   :root{
-    --bg:#0b1020;--court:#162247;--line:#dbe7ff;--net:#ffffff99;
-    --text:#eaf0ff;--muted:#9fb1d9;--danger:#ff5d5d;--ok:#38bdf8;
-    --top:#7aa2ff;--bottom:#ffd166;--hud:#0b1228cc;
+    /* 色系（清新薄荷＋蒂芬妮綠 + 柔霧灰） */
+    --bg-1:#e8f5f3;          /* 背景最底層 */
+    --bg-2:#f5fbfa;          /* 主背景 */
+    --card:#ffffffee;        /* 玻璃卡片 */
+    --glass:#ffffffbb;       /* 薄玻璃 */
+    --line:#7fbac0;          /* 球場白線（淡綠） */
+    --net:#94cfd4;           /* 球網 */
+    --text:#1b2b2d;          /* 主要字色 */
+    --muted:#5f8084;         /* 次要字色 */
+    --accent:#43c7ba;        /* 強調（蒂芬妮綠系） */
+    --accent-2:#a7efe7;      /* 次強調（薄荷） */
+    --warn:#ffb84d;          /* 局點/提醒 */
+    --danger:#ff5d5d;        /* 20+ 紅色 */
 
     /* 發球格：蒂芬妮綠 */
-    --serve-tile:#81D8D0; --serve-border:#E9F7F5;
+    --serve-tile:#81D8D0; 
+    --serve-border:#c8f1ed;
 
-    /* 底部工具列高度 */
-    --bar:64px;
-
-    /* 比分字體尺寸（JS 在全螢幕時會覆寫） */
+    /* 控制列 & 字體大小（會被 JS 覆寫全螢幕尺寸） */
+    --bar:74px;
     --score-size:58px;
+
+    /* 投影 */
+    --shadow-lg: 0 16px 40px rgba(0,0,0,.12);
+    --shadow-md: 0 10px 24px rgba(0,0,0,.10);
+    --shadow-sm: 0 6px 14px rgba(0,0,0,.08);
   }
 
+  /* 背景：清新漸層 + 柔和光暈 */
   html,body{height:100dvh}
   *{box-sizing:border-box;margin:0;padding:0}
   body{
-    background:linear-gradient(180deg,#0a0f22,#0f2147);
+    font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC","PingFang TC",sans-serif;
     color:var(--text);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC","PingFang TC",sans-serif;
+    background:
+      radial-gradient(900px 520px at 10% -15%, #bff5ef88, transparent 60%),
+      radial-gradient(900px 520px at 100% 110%, #dffcf88f, transparent 60%),
+      linear-gradient(180deg, var(--bg-2), var(--bg-1));
     overflow:hidden;
   }
 
-  /* 主舞台高度 = 視窗 - 底部工具列 */
   main{
     height:100dvh; display:grid; place-items:center;
     padding-bottom:calc(var(--bar) + max(0px, env(safe-area-inset-bottom)));
   }
 
-  /* 版面容器（固定比例） */
-  .board{
-    position:relative; z-index:1;
-    background:#0f1733; border:1px solid #ffffff22; border-radius:14px; overflow:hidden;
-    width:100vw;
-    height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 8px);
-    max-width:100vw;
-    max-height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 8px);
-    display:grid;
+  /* ========= 舞台（球場容器） ========= */
+  .stage{
+    position:relative; width:100vw;
+    height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 12px);
+    max-width:100vw; max-height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 12px);
+    border-radius:20px; overflow:hidden;
+    border:1px solid #9fd9d633;
+    background: linear-gradient(160deg,#f8fffe,#f1fbfa 55%, #eaf8f6);
+    box-shadow: var(--shadow-lg);
     aspect-ratio:16/9;
   }
 
-  /* 中央比分 HUD（固定置中；雙位數不跑位） */
-  .hud{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    z-index:25; display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center;
-    padding:10px 16px; border-radius:14px; background:var(--hud); backdrop-filter:blur(6px);
-    border:1px solid #ffffff26; box-shadow:0 6px 20px #0008;
+  /* ========= 球場繪製（清新木地板感） ========= */
+  .court{position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr}
+  .court::before{
+    content:""; position:absolute; inset:0;
+    background:
+      repeating-linear-gradient( 90deg, #e9f7f5 0 6px, #f2fcfb 6px 12px),
+      linear-gradient(180deg,#f7fffe,#f1fbfa);
+    opacity:.8; pointer-events:none;
   }
-  .score{display:flex; align-items:baseline; gap:6px; font-variant-numeric:tabular-nums}
-  .num{
-    display:inline-block; width:2.8ch; text-align:center;
-    font-size:var(--score-size); line-height:1; font-weight:900; letter-spacing:1px;
-    transition:font-size .2s ease;
+  .half{
+    position:relative; display:grid; grid-template-columns:1fr 1fr;
+    border-left:2px solid var(--line); border-right:2px solid var(--line);
   }
-  .num.danger{color:var(--danger); text-shadow:0 0 12px rgba(255,93,93,.35)}
-  .dot{width:10px; height:10px; border-radius:50%}
-  .dot.top{background:var(--top)} .dot.bottom{background:var(--bottom)}
-  .pill{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:#ffffff14; border:1px solid #ffffff2a; font-size:12px}
-  .badge{display:none; padding:4px 10px; border-radius:999px; border:1px solid #ffb0b0; background:#ff6b6b22; color:#ffdede; font-size:12px; font-weight:700}
-  .badge.show{display:inline-block}
-
-  /* 球場 */
-  .court{position:relative; inset:0; background:var(--court)}
+  .half.top{ background:linear-gradient(180deg,#f3fbfa,#ecf8f7); }
+  .half.bottom{ background:linear-gradient(0deg,#f3fbfa,#ecf8f7); }
   .net{
-    position:absolute; left:0; right:0; top:50%; height:2px; z-index:2;
-    background:linear-gradient(90deg,transparent,var(--net) 15%,var(--net) 85%,transparent);
-    box-shadow:0 0 6px var(--net)
+    position:absolute; left:0; right:0; top:50%; height:3px; z-index:3;
+    background:linear-gradient(90deg,transparent,var(--net) 18%,var(--net) 82%,transparent);
+    box-shadow:0 0 10px #9fd9d977;
   }
-  .halves{
-    position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr;
-    border-top:2px solid var(--line); border-bottom:2px solid var(--line)
-  }
-  .half{position:relative; border-left:2px solid var(--line); border-right:2px solid var(--line); display:grid; grid-template-columns:1fr 1fr}
-  .cell{
-    position:relative; display:flex; align-items:center; justify-content:center;
-    border:1px solid #ffffff25; cursor:pointer; user-select:none;
-    transition:background-color .12s ease, box-shadow .12s ease, transform .03s ease, outline-color .12s ease;
-    background:
-      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
-      linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.06));
-  }
-  .half.top .cell{background:
-      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
-      linear-gradient(180deg,#1a2956,#112048)}
-  .half.bottom .cell{background:
-      radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.05), transparent 70%),
-      linear-gradient(0deg,#243363,#1b2853)}
-  .cell:active{transform:scale(.995)}
-
-  /* 發球那一格：蒂芬妮綠地板（含回退背景） */
-  .cell.serve{
-    background:#81D8D0 !important;
-    background:
-      linear-gradient(180deg, rgba(129,216,208,1), rgba(100,190,180,1)) !important;
-    outline:3px solid var(--serve-border);
-    box-shadow:
-      inset 0 0 0 9999px rgba(129,216,208,.16),
-      0 0 0 2px rgba(0,0,0,.15),
-      0 8px 18px rgba(0,0,0,.35);
-  }
-
-  /* 球員名標籤（每格一個，小角落） */
-  .player-label{
-    position:absolute; inset:auto 6px 6px auto;  /* 右下角 */
-    font-size:12px; color:#eaf0ffcc; background:#00000044;
-    padding:2px 6px; border-radius:8px; border:1px solid #ffffff2a;
+  .court-outer{
+    position:absolute; inset:22px; border:2px solid var(--line); border-radius:12px; z-index:0;
+    box-shadow: inset 0 0 0 2px #9fd9d633;
     pointer-events:none;
   }
-  .half.top .player-label{ inset:6px 6px auto auto; } /* 上半場放右上角 */
+  .court-inner{
+    position:absolute; left:22px; right:22px; top:calc(22px + 2px); bottom:calc(22px + 2px);
+    border-top:2px solid var(--line); border-bottom:2px solid var(--line);
+    pointer-events:none;
+  }
 
-  /* 底部控制列：可橫向滑動，永不截掉；全螢幕可自動隱藏 */
+  .cell{
+    position:relative; cursor:pointer; user-select:none;
+    border:1px solid #83cfc833;
+    transition:transform .02s ease, box-shadow .2s ease, background .18s ease, outline-color .18s ease;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.2));
+  }
+  .cell:active{ transform:scale(.996); }
+
+  /* 發球格（單格高亮：蒂芬妮綠玻璃） */
+  .cell.serve{
+    background:linear-gradient(180deg, rgba(129,216,208,.95), rgba(100,190,180,.9)) !important;
+    outline:3px solid var(--serve-border);
+    box-shadow:
+      inset 0 0 0 9999px rgba(129,216,208,.08),
+      0 0 0 1px rgba(0,0,0,.06),
+      0 10px 24px rgba(44,159,148,.25);
+  }
+
+  /* 角落姓名貼紙（清新玻璃） */
+  .player-label{
+    position:absolute; inset:auto 8px 8px auto;
+    font-size:12px; color:#214245;
+    background:linear-gradient(180deg,#ffffffeb,#ffffffd0);
+    border:1px solid #9fd9d64d; border-radius:10px;
+    padding:3px 8px; pointer-events:none;
+    box-shadow: var(--shadow-sm);
+  }
+  .half.top .player-label{ inset:8px 8px auto auto }
+
+  /* ========= 中央 HUD（比分） ========= */
+  .hud{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:center;
+    padding:12px 18px; border-radius:16px;
+    background:var(--glass);
+    border:1px solid #9fd9d64d; box-shadow: var(--shadow-md); z-index:6;
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+  .score{display:flex; align-items:baseline; gap:8px; font-variant-numeric:tabular-nums}
+  .role{opacity:.8; font-size:13px; letter-spacing:.4px}
+  .num{
+    display:inline-block; width:3.2ch; text-align:center;
+    font-size:var(--score-size); line-height:1; font-weight:900; letter-spacing:.6px;
+    color:#153d3f;
+    text-shadow:0 2px 0 #fff7, 0 0 8px #b3ebe6aa;
+    transition: font-size .2s ease;
+  }
+  .num.danger{ color:var(--danger); text-shadow: 0 0 14px rgba(255,80,80,.25); }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 12px; border-radius:999px;
+    background:#ffffffcc; border:1px solid #9fd9d64d; font-size:12px; color:#1b2b2d;
+    box-shadow: var(--shadow-sm);
+  }
+  .badge{
+    display:none; padding:6px 10px; border-radius:999px;
+    border:1px solid #ffc08a; background:#fff2e0cc; color:#8a4f00; 
+    font-size:12px; font-weight:700; box-shadow: var(--shadow-sm)
+  }
+  .badge.show{display:inline-flex}
+
+  /* ========= 底部控制列（浮動果凍） ========= */
   footer#ctrlBar{
-    position:fixed; left:0; right:0; bottom:0; height:var(--bar);
-    background:linear-gradient(0deg, rgba(7,12,30,.88), rgba(7,12,30,.58));
-    backdrop-filter:blur(8px); border-top:1px solid #ffffff24; z-index:40;
+    position:fixed; left:0; right:0; bottom:0; height:var(--bar); z-index:40;
     display:flex; align-items:center; justify-content:center;
+    padding:8px max(10px, env(safe-area-inset-right)) calc(8px + max(0px, env(safe-area-inset-bottom))) max(10px, env(safe-area-inset-left));
+    pointer-events:none;
   }
-  .bar-viewport{
-    position:relative; width:100%; height:100%;
-    overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none;
-    padding:8px calc(10px + max(0px, env(safe-area-inset-right))) 8px calc(10px + max(0px, env(safe-area-inset-left)));
+  .bar{
+    pointer-events:auto;
+    max-width:min(980px, 96vw);
+    min-height:56px;
+    background:linear-gradient(180deg,#ffffffee,#ffffffd8);
+    border:1px solid #9fd9d64d; border-radius:16px; box-shadow: var(--shadow-md);
+    display:flex; gap:10px; align-items:center; padding:8px 10px; overflow:auto;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    backdrop-filter: blur(8px) saturate(120%);
   }
-  .bar-viewport::-webkit-scrollbar{display:none}
-  .bar-content{display:inline-flex; gap:10px; align-items:center; height:100%; white-space:nowrap; padding:0 8px}
-  .bar-viewport::before,.bar-viewport::after{
-    content:""; position:absolute; top:0; bottom:0; width:28px; pointer-events:none;
-    background:linear-gradient(90deg, rgba(7,12,30,1), rgba(7,12,30,0));
-  }
-  .bar-viewport::after{ right:0; left:auto; transform:scaleX(-1) }
-  .seg{display:inline-flex; background:#ffffff12; border:1px solid #ffffff22; border-radius:999px; overflow:hidden}
-  .seg button{padding:10px 12px; border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; white-space:nowrap}
-  .seg button.active{background:#ffffff26; color:var(--text); font-weight:700}
-  .btn{padding:10px 12px; border:1px solid #ffffff2a; background:#ffffff18; color:var(--text); border-radius:10px; cursor:pointer; font-size:14px; white-space:nowrap}
-  .btn.ok{border-color:#38bdf850; background:#38bdf826}
-  .btn:active{transform:translateY(1px)}
-  #ctrlBar.hidden{transform:translateY(100%); transition:transform .25s ease}
-  #ctrlBar:not(.hidden){transition:transform .25s ease}
+  .bar::-webkit-scrollbar{display:none}
 
-  /* 贏家彈窗 */
+  /* ========= Jelly 果凍按鈕 ========= */
+  @keyframes jelly {
+    0% { transform: scale(1,1); }
+    30%{ transform: scale(1.06, .94); }
+    55%{ transform: scale(.98, 1.02); }
+    75%{ transform: scale(1.02, .99); }
+    100%{ transform: scale(1,1); }
+  }
+  .btn, .seg > button{
+    --pad-x:16px; --pad-y:11px;
+    display:inline-flex; align-items:center; gap:8px;
+    padding:var(--pad-y) var(--pad-x); border-radius:14px;
+    font-size:14px; border:1px solid #9fd9d64d; color:#184344;
+    background:linear-gradient(180deg,#ffffff,#f6fffd);
+    cursor:pointer; white-space:nowrap;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .08s ease;
+    box-shadow: 0 2px 0 #ffffff inset, var(--shadow-sm);
+  }
+  .btn:hover, .seg > button:hover{ background:linear-gradient(180deg,#ffffff,#effcf9) }
+  .btn:active, .seg > button:active{ transform:translateY(1px) }
+  .btn.jelly:hover, .seg > button.jelly:hover{ animation: jelly .5s ease-out both }
+  .btn.ok{
+    background:linear-gradient(180deg,#eafffd,#d7fbf4);
+    border-color:#8fe7dc; color:#0e6c65;
+    box-shadow: 0 2px 0 #ffffff inset, 0 10px 20px #7de3d23a;
+  }
+  .seg{
+    display:inline-flex; padding:3px; gap:6px; border-radius:14px;
+    background:#ffffff; border:1px solid #9fd9d64d;
+    box-shadow: var(--shadow-sm);
+  }
+  .seg > button{ background:transparent; border:0; color:#3a6f72 }
+  .seg > button.active{
+    background:linear-gradient(180deg,#eafffd,#ddfcf5); 
+    color:#0c615a; font-weight:700; border-radius:10px; padding:10px 14px;
+    box-shadow: inset 0 0 0 1px #b5f1ea, 0 6px 14px #7de3d22a;
+  }
+
+  /* 全螢幕自動隱藏（只把整條往下推，不藏內容） */
+  #ctrlBar.hidden .bar{ transform:translateY(120%); opacity:.98; transition:all .25s ease }
+  #ctrlBar .bar{ transform:translateY(0); opacity:1; transition:all .25s ease }
+
+  /* ========= 贏家彈窗（清新玻璃） ========= */
   .modal{
-    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1000;
-    background:rgba(0,0,0,.55); backdrop-filter:blur(3px)
+    position:fixed; inset:0; display:none; place-items:center; z-index:1000;
+    background:rgba(171, 223, 216, .35); backdrop-filter: blur(6px);
   }
-  .modal.visible{display:flex}
-  .dialog{background:#0f1c3d; border:1px solid #ffffff2a; border-radius:16px; box-shadow:0 10px 40px #0008; padding:18px 18px 14px; min-width:260px; max-width:90vw; text-align:center}
-  .dialog h2{margin:0 0 8px; font-size:22px}
-  .dialog p{margin:0 0 14px; color:#cfe3ffcc}
-  .dialog .actions{display:flex; gap:10px; justify-content:center}
-  .dialog .actions .btn{font-size:14px}
+  .modal.visible{ display:grid }
+  .dialog{
+    width:min(90vw, 440px);
+    background:linear-gradient(180deg,#ffffffee,#ffffffd6);
+    border:1px solid #9fd9d64d; border-radius:20px;
+    padding:18px 18px 14px; box-shadow: var(--shadow-lg); text-align:center;
+  }
+  .dialog h2{ font-size:24px; margin-bottom:6px; color:#0e4e4a }
+  .dialog p{ color:#2b5e60; margin:0 0 16px }
+  .dialog .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap }
 
-  /* 開場姓名設定視窗 */
-  .setup{
-    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:900;
-    background:rgba(0,0,0,.55); backdrop-filter:blur(3px);
-  }
-  .setup.visible{display:flex}
+  /* ========= 開場姓名設定（清新玻璃） ========= */
+  .setup{ position:fixed; inset:0; display:none; place-items:center; z-index:900;
+          background:rgba(171, 223, 216, .35); backdrop-filter: blur(6px); }
+  .setup.visible{ display:grid }
   .setup-card{
-    width:min(720px, 92vw); background:#0f1c3d; border:1px solid #ffffff2a; border-radius:16px; padding:16px; box-shadow:0 10px 40px #0008;
+    width:min(820px, 92vw);
+    background:linear-gradient(180deg,#ffffffee,#ffffffd6);
+    border:1px solid #9fd9d64d; border-radius:20px; padding:16px; 
+    box-shadow: var(--shadow-lg);
   }
-  .setup-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
-  .setup .seg button{padding:8px 12px}
+  .setup-head{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px }
   .mini-court{
-    position:relative; width:100%; aspect-ratio:16/9; background:#10224a; border:1px solid #ffffff22; border-radius:12px; overflow:hidden;
-    display:grid; grid-template-rows:1fr 1fr;
+    position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden;
+    background:#f0fbf9; border:1px solid #9fd9d64d; box-shadow: inset 0 0 0 1px #9fd9d633;
+    display:grid; grid-template-rows:1fr 1fr; margin-bottom:12px;
   }
-  .mini-half{position:relative; border-left:2px solid var(--line); border-right:2px solid var(--line); display:grid; grid-template-columns:1fr 1fr}
-  .mini-net{position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent,var(--net) 15%,var(--net) 85%,transparent)}
-  .pos{
-    position:relative; border:1px dashed #ffffff33; display:flex; align-items:center; justify-content:center; padding:6px;
-  }
-  .pos label{position:absolute; top:6px; left:6px; font-size:12px; color:#cfe3ffb3}
+  .mini-net{ position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent,var(--net) 18%,var(--net) 82%,transparent) }
+  .mini-half{ display:grid; grid-template-columns:1fr 1fr; border-left:2px solid var(--line); border-right:2px solid var(--line) }
+  .pos{ position:relative; border:1px dashed #9fd9d666; display:flex; align-items:center; justify-content:center; padding:8px }
+  .pos label{ position:absolute; top:6px; left:6px; font-size:12px; color:#437d81 }
   .pos input{
-    width:90%; max-width:220px; padding:6px 8px; border-radius:8px; border:1px solid #ffffff33; background:#ffffff15; color:#eaf0ff;
-    outline:none;
+    width:92%; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid #9fd9d66e;
+    background:#ffffff; color:#1b2b2d; outline:none; box-shadow: var(--shadow-sm);
   }
-  .setup-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px}
-  .hint{font-size:12px; color:#cfe3ffb3}
+  .setup-actions{ display:flex; gap:10px; justify-content:flex-end }
+
+  /* ========= 手機微調 ========= */
   @media (max-width:640px){
-    .num{font-size:46px}
-    .seg button,.btn{padding:10px 10px; font-size:13px}
+    .btn,.seg>button{ font-size:13px; --pad-y:10px; --pad-x:12px }
+    .chip{ font-size:11px }
   }
 </style>
 </head>
 <body>
 
 <main>
-  <section class="board" id="board">
-    <!-- 中央比分 HUD -->
-    <div class="hud" id="hud">
-      <div class="score" id="scoreTop">
-        <span class="dot top"></span><span>上方</span>
-        <span class="num" id="numTop">0</span><span class="tag" style="font-size:12px;opacity:.85">分</span>
+  <section class="stage" id="stage">
+    <!-- 球場 -->
+    <div class="court">
+      <div class="court-outer"></div>
+      <div class="court-inner"></div>
+      <div class="net"></div>
+
+      <div class="half top" id="halfTop">
+        <div class="cell" data-half="top" data-col="left"><span class="player-label" id="label-TL"></span></div>
+        <div class="cell" data-half="top" data-col="right"><span class="player-label" id="label-TR"></span></div>
       </div>
-      <div class="pill"><span>發球：</span><strong id="servingSideLabel">下方</strong></div>
-      <div id="pointBadge" class="badge">局點 / 賽末點</div>
-      <div class="score" id="scoreBottom">
-        <span class="dot bottom"></span><span>下方</span>
-        <span class="num" id="numBottom">0</span><span class="tag" style="font-size:12px;opacity:.85">分</span>
+      <div class="half bottom" id="halfBottom">
+        <div class="cell" data-half="bottom" data-col="left"><span class="player-label" id="label-BL"></span></div>
+        <div class="cell" data-half="bottom" data-col="right"><span class="player-label" id="label-BR"></span></div>
       </div>
     </div>
 
-    <!-- 球場 -->
-    <div class="court">
-      <div class="net"></div>
-      <div class="halves">
-        <div class="half top" id="halfTop">
-          <div class="cell" data-half="top" data-col="left"><span class="player-label" id="label-TL"></span></div>
-          <div class="cell" data-half="top" data-col="right"><span class="player-label" id="label-TR"></span></div>
-        </div>
-        <div class="half bottom" id="halfBottom">
-          <div class="cell" data-half="bottom" data-col="left"><span class="player-label" id="label-BL"></span></div>
-          <div class="cell" data-half="bottom" data-col="right"><span class="player-label" id="label-BR"></span></div>
-        </div>
+    <!-- 中央比分 HUD -->
+    <div class="hud" id="hud">
+      <div class="score" id="scoreTop">
+        <span class="role">上方</span>
+        <span class="num" id="numTop">0</span>
+      </div>
+      <span class="chip">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 1-9 9a9.01 9.01 0 0 1 9-9m0 2a7 7 0 1 0 7 7a7 7 0 0 0-7-7m.75 3v4.25L16 14l-1.5 1.25L11 12.5V8z"/></svg>
+        <span>發球：<strong id="servingSideLabel">下方</strong></span>
+      </span>
+      <span id="pointBadge" class="badge">局點 / 賽末點</span>
+      <div class="score" id="scoreBottom">
+        <span class="role">下方</span>
+        <span class="num" id="numBottom">0</span>
       </div>
     </div>
   </section>
 </main>
 
-<!-- 底部可滑工具列（第一個就是開始比賽） -->
+<!-- 控制列 -->
 <footer id="ctrlBar">
-  <div class="bar-viewport">
-    <div class="bar-content">
-      <button class="btn ok" id="startBtn">開始比賽</button>
+  <div class="bar">
+    <button class="btn ok jelly" id="startBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="m8 5l12 7l-12 7z"/></svg>
+      開始比賽
+    </button>
 
-      <div class="seg" id="initServeSeg">
-        <button data-side="top">上方發球</button>
-        <button data-side="bottom" class="active">下方發球</button>
-      </div>
-
-      <div class="seg" id="voiceSeg">
-        <button data-voice="on" class="active">語音: 開</button>
-        <button data-voice="off">語音: 關</button>
-      </div>
-
-      <button class="btn" id="undoBtn">悔棋</button>
-      <button class="btn" id="fsBtn">全螢幕</button>
+    <div class="seg" id="initServeSeg">
+      <button class="jelly" data-side="top">上方發球</button>
+      <button class="jelly active" data-side="bottom">下方發球</button>
     </div>
+
+    <div class="seg" id="voiceSeg">
+      <button class="jelly active" data-voice="on">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M5 9v6h4l5 5V4L9 9zM19 12a7 7 0 0 0-3-5.74v11.48A7 7 0 0 0 19 12"/></svg>
+        語音：開
+      </button>
+      <button class="jelly" data-voice="off">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="m16.5 12l4.5 4.5l-1.5 1.5l-4.5-4.5l-4.5 4.5L9 16.5l4.5-4.5L9 7.5L10.5 6l4.5 4.5L19.5 6L21 7.5z"/></svg>
+        語音：關
+      </button>
+    </div>
+
+    <button class="btn jelly" id="undoBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 8A6.5 6.5 0 0 1 19 14.5V16h-2v-1.5A4.5 4.5 0 0 0 12.5 10H7.91l2.3 2.3L9.5 14L5 9.5L9.5 5l.71 1.7L7.91 8z"/></svg>
+      悔棋
+    </button>
+
+    <button class="btn jelly" id="fsBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14H5v5h5v-2H7zm12 5v-5h-2v3h-3v2zM7 7h3V5H5v5h2zm12-2h-5v2h3v3h2z"/></svg>
+      全螢幕
+    </button>
   </div>
 </footer>
 
@@ -252,71 +349,72 @@
     <h2 id="winTitle">比賽結束</h2>
     <p id="winDesc">恭喜！</p>
     <div class="actions">
-      <button class="btn ok" id="playAgainBtn">再來一局</button>
-      <button class="btn" id="closeModalBtn">關閉</button>
+      <button class="btn ok jelly" id="playAgainBtn">再來一局</button>
+      <button class="btn jelly" id="closeModalBtn">關閉</button>
     </div>
   </div>
 </div>
 
-<!-- 開場姓名設定視窗 -->
+<!-- 開場姓名設定 -->
 <div class="setup" id="setupModal">
   <div class="setup-card">
-    <div class="setup-row">
+    <div class="setup-head">
       <strong>比賽模式：</strong>
       <div class="seg" id="modeSeg">
-        <button data-mode="singles" class="active">單打</button>
-        <button data-mode="doubles">雙打</button>
+        <button class="jelly active" data-mode="singles">單打</button>
+        <button class="jelly" data-mode="doubles">雙打</button>
       </div>
-      <span class="hint">請在對應站位輸入姓名，或直接「快速開始」使用預設名稱。</span>
+      <span style="color:#437d81;font-size:12px">在對應站位輸入姓名，或「快速開始」用預設名稱。</span>
     </div>
 
     <div class="mini-court">
       <div class="mini-net"></div>
       <div class="mini-half">
-        <div class="pos"><label>上方・左邊 (TL)</label><input id="name-TL" placeholder="上方左"/></div>
-        <div class="pos"><label>上方・右邊 (TR)</label><input id="name-TR" placeholder="上方右"/></div>
+        <div class="pos"><label>上方・左 (TL)</label><input id="name-TL" placeholder="上方左"/></div>
+        <div class="pos"><label>上方・右 (TR)</label><input id="name-TR" placeholder="上方右"/></div>
       </div>
       <div class="mini-half">
-        <div class="pos"><label>下方・左邊 (BL)</label><input id="name-BL" placeholder="下方左"/></div>
-        <div class="pos"><label>下方・右邊 (BR)</label><input id="name-BR" placeholder="下方右"/></div>
+        <div class="pos"><label>下方・左 (BL)</label><input id="name-BL" placeholder="下方左"/></div>
+        <div class="pos"><label>下方・右 (BR)</label><input id="name-BR" placeholder="下方右"/></div>
       </div>
     </div>
 
     <div class="setup-actions">
-      <button class="btn" id="quickStartBtn">快速開始（預設姓名）</button>
-      <button class="btn ok" id="applyNamesBtn">開始比賽</button>
+      <button class="btn jelly" id="quickStartBtn">快速開始（預設姓名）</button>
+      <button class="btn ok jelly" id="applyNamesBtn">開始比賽</button>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
+  /* ---------- 狀態 ---------- */
   const state={mode:'singles',scoreTop:0,scoreBottom:0,servingSide:'bottom',history:[],gameOver:false};
   let pendingInitServe='bottom', voiceOn=true;
-  let resizeHandlerAttached=false;
+  let hideTimer=null, resizeHandlerAttached=false;
 
-  // 名單（四格對應）
+  /* ---------- 名稱（TL/TR/BL/BR） ---------- */
   const names={TL:'Player1', TR:'Player2', BL:'Player3', BR:'Player4'};
 
-  // DOM
-  const numTop=document.getElementById('numTop');
-  const numBottom=document.getElementById('numBottom');
-  const servingSideLabel=document.getElementById('servingSideLabel');
-  const pointBadge=document.getElementById('pointBadge');
-  const cells=[...document.querySelectorAll('.cell')];
-  const labels={
+  /* ---------- DOM ---------- */
+  const numTop = document.getElementById('numTop');
+  const numBottom = document.getElementById('numBottom');
+  const servingSideLabel = document.getElementById('servingSideLabel');
+  const pointBadge = document.getElementById('pointBadge');
+  const ctrlBar = document.getElementById('ctrlBar');
+  const fsBtn = document.getElementById('fsBtn');
+  const startBtn = document.getElementById('startBtn');
+  const undoBtn = document.getElementById('undoBtn');
+
+  const cells = [...document.querySelectorAll('.cell')];
+  const labels = {
     TL:document.getElementById('label-TL'),
     TR:document.getElementById('label-TR'),
     BL:document.getElementById('label-BL'),
     BR:document.getElementById('label-BR'),
   };
 
-  const startBtn=document.getElementById('startBtn');
-  const undoBtn=document.getElementById('undoBtn');
-  const fsBtn=document.getElementById('fsBtn');
-  const ctrlBar=document.getElementById('ctrlBar');
-
-  // Setup modal
+  // Setup
   const setupModal=document.getElementById('setupModal');
   const modeSeg=document.getElementById('modeSeg');
   const nameInputs={
@@ -328,24 +426,25 @@
   const applyNamesBtn=document.getElementById('applyNamesBtn');
   const quickStartBtn=document.getElementById('quickStartBtn');
 
-  // Winner modal
-  const modal=document.getElementById('winModal');
+  // Winner
+  const winModal=document.getElementById('winModal');
   const dialog=document.getElementById('winDialog');
   const winTitle=document.getElementById('winTitle');
   const winDesc=document.getElementById('winDesc');
   const playAgainBtn=document.getElementById('playAgainBtn');
   const closeModalBtn=document.getElementById('closeModalBtn');
 
-  /* ===== 規則 ===== */
+  /* ---------- 規則 ---------- */
   function resolveServeBox(){
-    const s=state.servingSide,score=s==='top'?state.scoreTop:state.scoreBottom;
-    const even=score%2===0;
+    const s=state.servingSide, score = s==='top'?state.scoreTop:state.scoreBottom;
+    const even = (score%2===0);
     if(s==='bottom') return even?['bottom','right']:['bottom','left'];
-    return even?['top','left']:['top','right']; // 上方鏡像（面向網）
+    // 上方（面對球網鏡像）：偶數左、奇數右（畫面視角反轉）
+    return even?['top','left']:['top','right'];
   }
   function haveWinner(){
-    const A=state.scoreTop,B=state.scoreBottom;
-    const max=Math.max(A,B),min=Math.min(A,B);
+    const A=state.scoreTop, B=state.scoreBottom;
+    const max=Math.max(A,B), min=Math.min(A,B);
     if((max>=21 && max-min>=2) || max===30) return A>B?'top':'bottom';
     return null;
   }
@@ -357,7 +456,7 @@
     return '';
   }
 
-  /* ===== UI ===== */
+  /* ---------- UI 更新 ---------- */
   function updateDigitsColor(){
     numTop.classList.toggle('danger', state.scoreTop>=20);
     numBottom.classList.toggle('danger', state.scoreBottom>=20);
@@ -366,10 +465,9 @@
     cells.forEach(c=>c.classList.remove('serve'));
     const [h,c]=resolveServeBox();
     const tile=document.querySelector(`.cell[data-half="${h}"][data-col="${c}"]`);
-    if(tile) tile.classList.add('serve');
+    tile?.classList.add('serve');
   }
   function updateBadges(){
-    if(!pointBadge) return;
     const msg=gamePointMessage();
     pointBadge.textContent = msg || '局點 / 賽末點';
     pointBadge.classList.toggle('show', !!msg);
@@ -384,39 +482,33 @@
     numTop.textContent=state.scoreTop;
     numBottom.textContent=state.scoreBottom;
     servingSideLabel.textContent=state.servingSide==='top'?'上方':'下方';
-    updateDigitsColor();
-    updateServeTile();
-    updateBadges();
-    refreshNameLabels();
+    updateDigitsColor(); updateServeTile(); updateBadges(); refreshNameLabels();
   }
 
-  /* ===== 語音（序列播放，避免互相取消） ===== */
+  /* ---------- 語音 ---------- */
   function speakSequence(texts){
     if(!voiceOn) return;
     if(!('speechSynthesis' in window)) return;
     try{
       window.speechSynthesis.cancel();
-      const queue = texts.filter(t=>t && t.trim().length>0);
-      const speakNext = () => {
+      const queue = texts.filter(t=>t && t.trim());
+      const next = () => {
         if(queue.length===0) return;
-        const text = queue.shift();
-        const u = new SpeechSynthesisUtterance(text);
+        const u = new SpeechSynthesisUtterance(queue.shift());
         u.lang='zh-TW'; u.rate=1; u.pitch=1; u.volume=1;
-        u.onend = speakNext;
+        u.onend = next;
         window.speechSynthesis.speak(u);
       };
-      speakNext();
+      next();
     }catch(e){}
   }
-  // 得分方分數優先
   function scoreText(lastScorer=null){
-    const A=state.scoreTop, B=state.scoreBottom;
-    let first, second;
+    const A=state.scoreTop,B=state.scoreBottom;
+    let first=A, second=B;
     if(lastScorer==='top'){ first=A; second=B; }
-    else if(lastScorer==='bottom'){ first=B; second=A; }
-    else { first=A; second=B; }
-    const gpMsg = gamePointMessage();
-    return gpMsg ? `${first} 比 ${second}，${gpMsg}` : `${first} 比 ${second}`;
+    if(lastScorer==='bottom'){ first=B; second=A; }
+    const gp = gamePointMessage();
+    return gp ? `${first} 比 ${second}，${gp}` : `${first} 比 ${second}`;
   }
   function currentServingNameAndPos(){
     const [h,c]=resolveServeBox();
@@ -425,14 +517,11 @@
     if(h==='top' && c==='right') name=names.TR;
     if(h==='bottom' && c==='left') name=names.BL;
     if(h==='bottom' && c==='right') name=names.BR;
-    const halfText=h==='top'?'上方':'下方';
-    // 語音左/右：上方需鏡像（以面對網為準）
+    const halfText = (h==='top'?'上方':'下方');
+    // 上方左右口播鏡像
     let sideText;
-    if(h==='top'){
-      sideText = c==='left' ? '右邊' : '左邊';
-    }else{
-      sideText = c==='left' ? '左邊' : '右邊';
-    }
+    if(h==='top'){ sideText = (c==='left'?'右邊':'左邊'); }
+    else{ sideText = (c==='left'?'左邊':'右邊'); }
     return {name, halfText, sideText};
   }
   function servingText(){
@@ -440,161 +529,110 @@
     return name ? `${name} ${halfText}${sideText}發球。` : '';
   }
 
-  /* ===== 雙打輪轉（左右互換） ===== */
+  /* ---------- 記分 ---------- */
   function rotateIfServingSideWon(winner, prevServer){
     if(winner!==prevServer) return;
     if(state.mode==='singles') return;
-    if(winner==='top'){
-      const tmp=names.TL; names.TL=names.TR; names.TR=tmp;
-    }else{
-      const tmp=names.BL; names.BL=names.BR; names.BR=tmp;
-    }
+    if(winner==='top'){ [names.TL, names.TR] = [names.TR, names.TL]; }
+    else{ [names.BL, names.BR] = [names.BR, names.BL]; }
   }
-
-  /* ===== 記分 ===== */
   function scorePoint(side){
     if(state.gameOver) return;
     const prevServer = state.servingSide;
-
-    state.history.push({...state, names: {...names}});
+    state.history.push({...state, names:{...names}});
     if(side==='top') state.scoreTop++; else state.scoreBottom++;
-    state.servingSide=side;
-
+    state.servingSide = side;
     rotateIfServingSideWon(side, prevServer);
 
-    const w=haveWinner();
+    const w = haveWinner();
     updateAll();
 
     if(w){
-      const texts = [
+      speakSequence([
         scoreText(side),
         `比賽結束，${w==='top'?'上方':'下方'} 獲勝。最終比分 ${state.scoreTop} 比 ${state.scoreBottom}`
-      ];
-      speakSequence(texts);
+      ]);
       showWinner(w);
       state.gameOver=true;
       return;
     }
-
     speakSequence([ scoreText(side), servingText() ]);
   }
 
-  /* ===== 點擊半場 ===== */
   document.getElementById('halfTop').addEventListener('click',()=>scorePoint('top'));
   document.getElementById('halfBottom').addEventListener('click',()=>scorePoint('bottom'));
 
-  /* ===== 控制列：開局發球／語音開關 ===== */
+  /* ---------- 控制列 ---------- */
   document.getElementById('initServeSeg').addEventListener('click',e=>{
     const btn=e.target.closest('button'); if(!btn) return;
     pendingInitServe=btn.dataset.side;
-    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b===btn));
+    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active', b===btn));
   });
+
   document.getElementById('voiceSeg').addEventListener('click',e=>{
     const btn=e.target.closest('button'); if(!btn) return;
-    voiceOn = btn.dataset.voice==='on';
-    [...e.currentTarget.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b===btn));
+    voiceOn = (btn.dataset.voice==='on');
+    const group = e.currentTarget;
+    [...group.querySelectorAll('button')].forEach(b=>b.classList.toggle('active', b===btn));
     if(voiceOn) speakSequence(['語音播報已開啟']); else window.speechSynthesis?.cancel();
   });
 
-  /* ===== 開始比賽（開啟姓名設定）／悔棋 ===== */
   startBtn.addEventListener('click', openSetup);
-  function startNewMatch(serving='bottom'){
-    state.scoreTop=0; state.scoreBottom=0; state.gameOver=false;
-    state.servingSide=serving; state.history=[];
-    updateAll();
-    speakSequence(['比賽開始', servingText() ]);
-  }
   undoBtn.addEventListener('click',()=>{
-    if(state.history.length){
-      const prev = state.history.pop();
-      state.mode = prev.mode ?? state.mode;
-      state.scoreTop = prev.scoreTop;
-      state.scoreBottom = prev.scoreBottom;
-      state.servingSide = prev.servingSide;
-      state.gameOver = prev.gameOver ?? false;
-      if(prev.names) Object.assign(names, prev.names);
-      updateAll();
-      speakSequence([ scoreText(null), servingText() ]);
-    }
+    if(!state.history.length) return;
+    const prev=state.history.pop();
+    state.mode=prev.mode; state.scoreTop=prev.scoreTop; state.scoreBottom=prev.scoreBottom;
+    state.servingSide=prev.servingSide; state.gameOver=prev.gameOver;
+    Object.assign(names, prev.names||{});
+    updateAll();
+    speakSequence([ scoreText(null), servingText() ]);
   });
 
-  /* ===== 贏家彈窗 ===== */
-  function showWinner(winner){
-    winTitle.textContent='比賽結束';
-    winDesc.textContent=(winner==='top'?'上方':'下方')+' 獲勝！最終比分：'+state.scoreTop+' : '+state.scoreBottom;
-    modal.classList.add('visible');
-    setTimeout(()=>playAgainBtn.focus(),0);
-  }
-  function hideModal(){ modal.classList.remove('visible'); }
-  playAgainBtn.addEventListener('click',()=>{ hideModal(); openSetup(); });
-  closeModalBtn.addEventListener('click', hideModal);
-  modal.addEventListener('click',e=>{ if(!dialog.contains(e.target)) hideModal(); });
-  dialog.addEventListener('click',e=> e.stopPropagation());
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('visible')) hideModal(); });
-
-  /* ===== 全螢幕＋自動隱藏控制列（並動態放大比分：直/橫皆適用） ===== */
-  let hideTimer=null;
-
+  /* ---------- 全螢幕＋自動隱藏控制列＋動態比分放大（直/橫皆適用） ---------- */
   function enterFS(){
-    const target = document.documentElement;
-    (target.requestFullscreen?.() || document.body.requestFullscreen?.())?.catch(err=>alert("全螢幕失敗："+err));
+    (document.documentElement.requestFullscreen?.() || document.body.requestFullscreen?.())?.catch(err=>alert('全螢幕失敗：'+err));
   }
   function exitFS(){ document.exitFullscreen?.(); }
-
   fsBtn.addEventListener('click',()=>{ if(!document.fullscreenElement) enterFS(); else exitFS(); });
 
   function showBarTemporarily(){
     if(!document.fullscreenElement) return;
     ctrlBar.classList.remove('hidden');
     if(hideTimer) clearTimeout(hideTimer);
-    hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2500);
+    hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2600);
   }
-
-  function updateFullscreenScoreSize(){
-    if(!document.fullscreenElement){
-      // 離開全螢幕：還原
-      document.documentElement.style.removeProperty('--score-size');
-      return;
-    }
-    // 用較短邊動態計算，確保直向也會變大
+  function setFSScoreSize(){
+    // 用較短邊計算，確保直向也會放大
     const minSide = Math.min(window.innerWidth, window.innerHeight);
-    // 比例可調，並加上邊界避免過小或過大
-    const px = Math.max(96, Math.min(260, Math.round(minSide * 0.22)));
+    const px = Math.max(110, Math.min(280, Math.round(minSide * 0.22)));
     document.documentElement.style.setProperty('--score-size', px + 'px');
-  }
-
-  function onResizeWhileFS(){
-    updateFullscreenScoreSize();
   }
 
   document.addEventListener('fullscreenchange',()=>{
     if(document.fullscreenElement){
-      // 進入全螢幕：顯示控制列一下並自動隱藏；啟動動態字體大小（含直向）
+      setFSScoreSize();
       showBarTemporarily();
-      updateFullscreenScoreSize();
       if(!resizeHandlerAttached){
-        window.addEventListener('resize', onResizeWhileFS, {passive:true});
-        window.addEventListener('orientationchange', onResizeWhileFS, {passive:true});
+        window.addEventListener('resize', setFSScoreSize, {passive:true});
+        window.addEventListener('orientationchange', setFSScoreSize, {passive:true});
         resizeHandlerAttached=true;
       }
     }else{
-      // 離開全螢幕：清理
       ctrlBar.classList.remove('hidden');
       if(hideTimer) clearTimeout(hideTimer);
-      updateFullscreenScoreSize();
+      document.documentElement.style.removeProperty('--score-size');
       if(resizeHandlerAttached){
-        window.removeEventListener('resize', onResizeWhileFS);
-        window.removeEventListener('orientationchange', onResizeWhileFS);
+        window.removeEventListener('resize', setFSScoreSize);
+        window.removeEventListener('orientationchange', setFSScoreSize);
         resizeHandlerAttached=false;
       }
     }
   });
-
   ['pointermove','touchstart','click','keydown'].forEach(ev=>{
     document.addEventListener(ev, showBarTemporarily, {passive:true});
   });
 
-  /* ===== 開場姓名/模式設定流程 ===== */
+  /* ---------- 姓名/模式設定 ---------- */
   function openSetup(){
     syncInputsForMode();
     nameInputs.TL.value = names.TL || '';
@@ -605,38 +643,42 @@
   }
   function closeSetup(){ setupModal.classList.remove('visible'); }
 
-  modeSeg.addEventListener('click', (e)=>{
+  modeSeg.addEventListener('click',e=>{
     const btn=e.target.closest('button'); if(!btn) return;
     state.mode=btn.dataset.mode;
     [...modeSeg.querySelectorAll('button')].forEach(b=>b.classList.toggle('active', b===btn));
     syncInputsForMode();
   });
-
   function syncInputsForMode(){
     const singles = state.mode==='singles';
     nameInputs.TR.parentElement.style.opacity = singles ? '.45' : '1';
     nameInputs.BR.parentElement.style.opacity = singles ? '.45' : '1';
   }
 
+  function startNewMatch(serving='bottom'){
+    state.scoreTop=0; state.scoreBottom=0; state.gameOver=false;
+    state.servingSide=serving; state.history=[];
+    updateAll();
+    speakSequence(['比賽開始', servingText() ]);
+  }
   function applyNames(useDefaultsIfEmpty){
-    const getOrDefault=(v, d)=> (v && v.trim().length>0) ? v.trim() : d;
+    const get=(v,d)=> (v && v.trim()) ? v.trim() : d;
     if(state.mode==='singles'){
-      const topName = getOrDefault(nameInputs.TL.value, useDefaultsIfEmpty? 'Player1':'' ) || 'Player1';
-      const bottomName = getOrDefault(nameInputs.BL.value, useDefaultsIfEmpty? 'Player3':'' ) || 'Player3';
-      names.TL = topName; names.TR = topName;
-      names.BL = bottomName; names.BR = bottomName;
+      const top = get(nameInputs.TL.value, useDefaultsIfEmpty?'Player1':'') || 'Player1';
+      const bottom = get(nameInputs.BL.value, useDefaultsIfEmpty?'Player3':'') || 'Player3';
+      names.TL = top; names.TR = top;
+      names.BL = bottom; names.BR = bottom;
     }else{
-      names.TL = getOrDefault(nameInputs.TL.value, useDefaultsIfEmpty? 'Player1':'' ) || 'Player1';
-      names.TR = getOrDefault(nameInputs.TR.value, useDefaultsIfEmpty? 'Player2':'' ) || 'Player2';
-      names.BL = getOrDefault(nameInputs.BL.value, useDefaultsIfEmpty? 'Player3':'' ) || 'Player3';
-      names.BR = getOrDefault(nameInputs.BR.value, useDefaultsIfEmpty? 'Player4':'' ) || 'Player4';
+      names.TL = get(nameInputs.TL.value, useDefaultsIfEmpty?'Player1':'') || 'Player1';
+      names.TR = get(nameInputs.TR.value, useDefaultsIfEmpty?'Player2':'') || 'Player2';
+      names.BL = get(nameInputs.BL.value, useDefaultsIfEmpty?'Player3':'') || 'Player3';
+      names.BR = get(nameInputs.BR.value, useDefaultsIfEmpty?'Player4':'') || 'Player4';
     }
     closeSetup();
     startNewMatch(pendingInitServe);
   }
-
-  applyNamesBtn.addEventListener('click', ()=> applyNames(true));
-  quickStartBtn.addEventListener('click', ()=>{
+  document.getElementById('applyNamesBtn').addEventListener('click',()=>applyNames(true));
+  document.getElementById('quickStartBtn').addEventListener('click',()=>{
     if(state.mode==='singles'){
       names.TL='Player1'; names.TR='Player1';
       names.BL='Player3'; names.BR='Player3';
@@ -647,7 +689,21 @@
     startNewMatch(pendingInitServe);
   });
 
-  /* ===== 初始 ===== */
+  /* ---------- 贏家彈窗 ---------- */
+  function showWinner(winner){
+    winTitle.textContent='比賽結束';
+    winDesc.textContent=(winner==='top'?'上方':'下方')+` 獲勝！最終比分：${state.scoreTop} : ${state.scoreBottom}`;
+    winModal.classList.add('visible');
+    setTimeout(()=>playAgainBtn.focus(),0);
+  }
+  function hideModal(){ winModal.classList.remove('visible'); }
+  playAgainBtn.addEventListener('click',()=>{ hideModal(); openSetup(); });
+  closeModalBtn.addEventListener('click', hideModal);
+  winModal.addEventListener('click',e=>{ if(!dialog.contains(e.target)) hideModal(); });
+  dialog.addEventListener('click',e=> e.stopPropagation());
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && winModal.classList.contains('visible')) hideModal(); });
+
+  /* ---------- 初始化 ---------- */
   updateAll();
 })();
 </script>
