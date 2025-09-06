@@ -132,17 +132,17 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    display: none; /* 預設隱藏，由 JS 控制顯示 */
+    display: none; 
     align-items: center;
     justify-content: center;
     gap: 8px;
     pointer-events: none;
     z-index: 5;
   }
-  /* <<<<< 修改點：加大圖示尺寸 >>>>> */
+  /* <<<<< 修改點：再次加大圖示尺寸 >>>>> */
   .court-logo, .court-shuttle {
-    width: 38px; /* 從 32px 加大 */
-    height: 38px; /* 從 32px 加大 */
+    width: 54px; /* 從 46px 加大 */
+    height: 54px; /* 從 46px 加大 */
   }
   .court-shuttle {
     animation: bounce 0.8s infinite alternate;
@@ -161,14 +161,12 @@
     background:var(--glass);
     border:1px solid #9fd9d64d; box-shadow: var(--shadow-md); z-index:6;
     backdrop-filter: blur(10px) saturate(120%);
-    /* <<<<< 新增：全螢幕時的 HUD 樣式 >>>>> */
-    transition: all .2s ease-out; /* 平滑過渡 */
+    transition: all .2s ease-out; 
   }
 
-  /* 當 stage 處於全螢幕調整模式時，縮小 HUD */
   .stage.fullscreen-adjust .hud {
-    padding: 8px 12px; /* 縮小 padding */
-    gap: 10px; /* 縮小間距 */
+    padding: 8px 12px; 
+    gap: 10px; 
   }
 
   .score-section {
@@ -732,8 +730,7 @@
   }
   function setFSScoreSize(){
     const minSide = Math.min(window.innerWidth, window.innerHeight);
-    /* <<<<< 修改點：將比分數字的最大尺寸從 220px 調降至 160px，進一步縮小 >>>>> */
-    const px = Math.max(110, Math.min(160, Math.round(minSide * 0.22))); 
+    const px = Math.max(110, Math.min(160, Math.round(minSide * 0.22)));
     document.documentElement.style.setProperty('--score-size', px + 'px');
   }
   
