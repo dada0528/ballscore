@@ -130,34 +130,37 @@
   /* 隊伍 Logo */
   .court-logo {
     position: absolute;
-    width: 40px; height: 40px;
-    display: none; pointer-events: none; z-index: 2;
-    transition: top 0.3s ease, right 0.3s ease, bottom 0.3s ease, left 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: none; 
+    pointer-events: none;
+    z-index: 2;
   }
-  .court-logo.active { display: block; }
+  /* 活躍的隊伍 Logo 才顯示 */
+  .court-logo.active {
+    display: block; 
+  }
   .half.top .court-logo { top: 28px; right: 28px; }
   .half.bottom .court-logo { bottom: 28px; left: 28px; }
 
   /* 發球羽球 */
   .court-shuttle {
     position: absolute;
-    width: 40px; height: 40px;
-    display: none; pointer-events: none; z-index: 5;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    display: none; /* 預設隱藏 */
+    pointer-events: none;
+    z-index: 5; /* 確保在最上層 */
     animation: bounce 0.8s infinite alternate;
-    transition: transform 0.3s ease;
+    /* 讓羽球圖案在發球格內置中 */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
   @keyframes bounce {
       from { transform: translate(-50%, -50%); }
-      to { transform: translate(-50%, -60%); }
+      to { transform: translate(-50%, -60%); } /* 往上一點點 */
   }
-
-  /* <<<<< 修改點：新增全螢幕時圖示外推的樣式 >>>>> */
-  .stage.fullscreen-adjust .half.top .court-logo { top: 16px; right: 16px; }
-  .stage.fullscreen-adjust .half.bottom .court-logo { bottom: 16px; left: 16px; }
-  .stage.fullscreen-adjust .cell[data-half="top"] .court-shuttle { transform: translate(-50%, -80%); }
-  .stage.fullscreen-adjust .cell[data-half="bottom"] .court-shuttle { transform: translate(-50%, -20%); }
 
 
   /* ========= 中央 HUD（比分） ========= */
@@ -477,7 +480,6 @@
   const names={TL:'藍隊選手1', TR:'藍隊選手2', BL:'紅隊選手1', BR:'紅隊選手2'};
 
   /* ---------- DOM ---------- */
-  const stage = document.getElementById('stage'); /* <<<<< 修改點：獲取 stage 元素 >>>>> */
   const numTop = document.getElementById('numTop');
   const numBottom = document.getElementById('numBottom');
   const servingSideLabel = document.getElementById('servingSideLabel');
@@ -526,15 +528,19 @@
   const closeModalBtn=document.getElementById('closeModalBtn');
 
   /* ---------- 規則 ---------- */
+  /* <<<<< 最終修正：根據您的回饋，重新定義視覺邏輯 >>>>> */
   function resolveServeBox(){
     const s = state.servingSide;
-    const score = (s === 'top') ? state.scoreTop : state.scoreBottom;
+    const score = s === 'top' ? state.scoreTop : state.scoreBottom;
     const even = (score % 2 === 0);
 
+    // 根據您的要求重新定義邏輯：
+    // 上方：偶數在左(left), 奇數在右(right)
+    // 下方 (鏡像)：偶數在右(right), 奇數在左(left)
     if (s === 'top') {
-      return even ? ['top', 'right'] : ['top', 'left'];
-    } else {
-      return even ? ['bottom', 'left'] : ['bottom', 'right'];
+      return even ? ['top', 'left'] : ['top', 'right'];
+    } else { // s === 'bottom'
+      return even ? ['bottom', 'right'] : ['bottom', 'left'];
     }
   }
 
@@ -643,6 +649,7 @@
     
     const halfText = (h === 'top' ? '上方' : '下方');
     
+    // 語音播報嚴格遵守「面對球網，偶數右、奇數左」的規則
     const score = h === 'top' ? state.scoreTop : state.scoreBottom;
     const sideText = (score % 2 === 0) ? '右邊' : '左邊';
     
@@ -727,15 +734,14 @@
     hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2600);
   }
   function setFSScoreSize(){
+    // 用較短邊計算，確保直向也會放大
     const minSide = Math.min(window.innerWidth, window.innerHeight);
     const px = Math.max(110, Math.min(280, Math.round(minSide * 0.22)));
     document.documentElement.style.setProperty('--score-size', px + 'px');
   }
-  
-  /* <<<<< 修改點：改為在 stage 上切換 class >>>>> */
+
   document.addEventListener('fullscreenchange',()=>{
     if(document.fullscreenElement){
-      stage.classList.add('fullscreen-adjust');
       setFSScoreSize();
       showBarTemporarily();
       if(!resizeHandlerAttached){
@@ -744,7 +750,6 @@
         resizeHandlerAttached=true;
       }
     }else{
-      stage.classList.remove('fullscreen-adjust');
       ctrlBar.classList.remove('hidden');
       if(hideTimer) clearTimeout(hideTimer);
       document.documentElement.style.removeProperty('--score-size');
@@ -803,6 +808,7 @@
       names.BR = get(nameInputs.BR.value, useDefaultsIfEmpty?'紅隊選手2':'') || '';
     }
     
+    // 檢查雙打模式下選手姓名是否為空
     if (state.mode === 'doubles' && (!names.TL || !names.BL)) {
       alert('雙打模式至少需輸入兩隊的主要選手名稱！');
       return;
