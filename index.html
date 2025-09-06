@@ -127,39 +127,29 @@
   .half.top .player-label{ inset:8px 8px auto auto }
 
   /* ========== 放在場地上的圖示 ========== */
-  /* 隊伍 Logo */
-  .court-logo {
+  .icon-container {
     position: absolute;
-    width: 40px;
-    height: 40px;
-    display: none; 
-    pointer-events: none;
-    z-index: 2;
-  }
-  /* 活躍的隊伍 Logo 才顯示 */
-  .court-logo.active {
-    display: block; 
-  }
-  .half.top .court-logo { top: 28px; right: 28px; }
-  .half.bottom .court-logo { bottom: 28px; left: 28px; }
-
-  /* 發球羽球 */
-  .court-shuttle {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    display: none; /* 預設隱藏 */
-    pointer-events: none;
-    z-index: 5; /* 確保在最上層 */
-    animation: bounce 0.8s infinite alternate;
-    /* 讓羽球圖案在發球格內置中 */
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    display: none; /* 預設隱藏，由 JS 控制顯示 */
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  /* <<<<< 修改點：加大圖示尺寸 >>>>> */
+  .court-logo, .court-shuttle {
+    width: 38px; /* 從 32px 加大 */
+    height: 38px; /* 從 32px 加大 */
+  }
+  .court-shuttle {
+    animation: bounce 0.8s infinite alternate;
   }
   @keyframes bounce {
-      from { transform: translate(-50%, -50%); }
-      to { transform: translate(-50%, -60%); } /* 往上一點點 */
+      from { transform: translateY(0); }
+      to { transform: translateY(-5px); }
   }
 
 
@@ -171,7 +161,16 @@
     background:var(--glass);
     border:1px solid #9fd9d64d; box-shadow: var(--shadow-md); z-index:6;
     backdrop-filter: blur(10px) saturate(120%);
+    /* <<<<< 新增：全螢幕時的 HUD 樣式 >>>>> */
+    transition: all .2s ease-out; /* 平滑過渡 */
   }
+
+  /* 當 stage 處於全螢幕調整模式時，縮小 HUD */
+  .stage.fullscreen-adjust .hud {
+    padding: 8px 12px; /* 縮小 padding */
+    gap: 10px; /* 縮小間距 */
+  }
+
   .score-section {
       display: flex;
       flex-direction: column;
@@ -341,25 +340,35 @@
       <div class="net"></div>
 
       <div class="half top" id="halfTop">
-        <img src="blue.png" alt="藍隊" class="court-logo" id="logoTop">
         <div class="cell" data-half="top" data-col="left">
           <span class="player-label" id="label-TL"></span>
-          <img src="shuttle.png" alt="發球" class="court-shuttle" id="shuttleTopLeft">
+          <div class="icon-container" id="iconsTopLeft">
+            <img src="blue.png" alt="藍隊" class="court-logo">
+            <img src="shuttle.png" alt="發球" class="court-shuttle">
+          </div>
         </div>
         <div class="cell" data-half="top" data-col="right">
           <span class="player-label" id="label-TR"></span>
-          <img src="shuttle.png" alt="發球" class="court-shuttle" id="shuttleTopRight">
+          <div class="icon-container" id="iconsTopRight">
+            <img src="blue.png" alt="藍隊" class="court-logo">
+            <img src="shuttle.png" alt="發球" class="court-shuttle">
+          </div>
         </div>
       </div>
       <div class="half bottom" id="halfBottom">
-        <img src="red.png" alt="紅隊" class="court-logo" id="logoBottom">
         <div class="cell" data-half="bottom" data-col="left">
           <span class="player-label" id="label-BL"></span>
-          <img src="shuttle.png" alt="發球" class="court-shuttle" id="shuttleBottomLeft">
+           <div class="icon-container" id="iconsBottomLeft">
+            <img src="red.png" alt="紅隊" class="court-logo">
+            <img src="shuttle.png" alt="發球" class="court-shuttle">
+          </div>
         </div>
         <div class="cell" data-half="bottom" data-col="right">
           <span class="player-label" id="label-BR"></span>
-          <img src="shuttle.png" alt="發球" class="court-shuttle" id="shuttleBottomRight">
+          <div class="icon-container" id="iconsBottomRight">
+            <img src="red.png" alt="紅隊" class="court-logo">
+            <img src="shuttle.png" alt="發球" class="court-shuttle">
+          </div>
         </div>
       </div>
     </div>
@@ -480,6 +489,7 @@
   const names={TL:'藍隊選手1', TR:'藍隊選手2', BL:'紅隊選手1', BR:'紅隊選手2'};
 
   /* ---------- DOM ---------- */
+  const stage = document.getElementById('stage');
   const numTop = document.getElementById('numTop');
   const numBottom = document.getElementById('numBottom');
   const servingSideLabel = document.getElementById('servingSideLabel');
@@ -491,12 +501,10 @@
   const topPlayerNames = document.getElementById('topPlayerNames');
   const bottomPlayerNames = document.getElementById('bottomPlayerNames');
 
-  const logoTop = document.getElementById('logoTop');
-  const logoBottom = document.getElementById('logoBottom');
-  const shuttleTopLeft = document.getElementById('shuttleTopLeft');
-  const shuttleTopRight = document.getElementById('shuttleTopRight');
-  const shuttleBottomLeft = document.getElementById('shuttleBottomLeft');
-  const shuttleBottomRight = document.getElementById('shuttleBottomRight');
+  const iconsTopLeft = document.getElementById('iconsTopLeft');
+  const iconsTopRight = document.getElementById('iconsTopRight');
+  const iconsBottomLeft = document.getElementById('iconsBottomLeft');
+  const iconsBottomRight = document.getElementById('iconsBottomRight');
   
   const cells = [...document.querySelectorAll('.cell')];
   const labels = {
@@ -528,18 +536,14 @@
   const closeModalBtn=document.getElementById('closeModalBtn');
 
   /* ---------- 規則 ---------- */
-  /* <<<<< 最終修正：根據您的回饋，重新定義視覺邏輯 >>>>> */
   function resolveServeBox(){
     const s = state.servingSide;
-    const score = s === 'top' ? state.scoreTop : state.scoreBottom;
+    const score = (s === 'top') ? state.scoreTop : state.scoreBottom;
     const even = (score % 2 === 0);
 
-    // 根據您的要求重新定義邏輯：
-    // 上方：偶數在左(left), 奇數在右(right)
-    // 下方 (鏡像)：偶數在右(right), 奇數在左(left)
     if (s === 'top') {
       return even ? ['top', 'left'] : ['top', 'right'];
-    } else { // s === 'bottom'
+    } else { 
       return even ? ['bottom', 'right'] : ['bottom', 'left'];
     }
   }
@@ -570,27 +574,17 @@
     tile?.classList.add('serve');
   }
   
-  function updateShuttleIcon() {
-      shuttleTopLeft.style.display = 'none';
-      shuttleTopRight.style.display = 'none';
-      shuttleBottomLeft.style.display = 'none';
-      shuttleBottomRight.style.display = 'none';
+  function updateServingIcons() {
+      iconsTopLeft.style.display = 'none';
+      iconsTopRight.style.display = 'none';
+      iconsBottomLeft.style.display = 'none';
+      iconsBottomRight.style.display = 'none';
 
       const [half, col] = resolveServeBox();
-      if (half === 'top') {
-          if (col === 'left') shuttleTopLeft.style.display = 'block';
-          else shuttleTopRight.style.display = 'block';
-      } else {
-          if (col === 'left') shuttleBottomLeft.style.display = 'block';
-          else shuttleBottomRight.style.display = 'block';
-      }
-  }
-
-  function updateCourtLogos() {
-      logoTop.classList.remove('active');
-      logoBottom.classList.remove('active');
-      if (state.servingSide === 'top') logoTop.classList.add('active');
-      else logoBottom.classList.add('active');
+      if (half === 'top' && col === 'left') iconsTopLeft.style.display = 'flex';
+      if (half === 'top' && col === 'right') iconsTopRight.style.display = 'flex';
+      if (half === 'bottom' && col === 'left') iconsBottomLeft.style.display = 'flex';
+      if (half === 'bottom' && col === 'right') iconsBottomRight.style.display = 'flex';
   }
 
   function updateBadges(){
@@ -610,7 +604,11 @@
     numTop.textContent=state.scoreTop;
     numBottom.textContent=state.scoreBottom;
     servingSideLabel.textContent=state.servingSide==='top'?'上方':'下方';
-    updateDigitsColor(); updateServeTile(); updateShuttleIcon(); updateCourtLogos(); updateBadges(); refreshNameLabels();
+    updateDigitsColor(); 
+    updateServeTile(); 
+    updateServingIcons(); 
+    updateBadges(); 
+    refreshNameLabels();
   }
 
   /* ---------- 語音 ---------- */
@@ -649,7 +647,6 @@
     
     const halfText = (h === 'top' ? '上方' : '下方');
     
-    // 語音播報嚴格遵守「面對球網，偶數右、奇數左」的規則
     const score = h === 'top' ? state.scoreTop : state.scoreBottom;
     const sideText = (score % 2 === 0) ? '右邊' : '左邊';
     
@@ -734,14 +731,15 @@
     hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2600);
   }
   function setFSScoreSize(){
-    // 用較短邊計算，確保直向也會放大
     const minSide = Math.min(window.innerWidth, window.innerHeight);
-    const px = Math.max(110, Math.min(280, Math.round(minSide * 0.22)));
+    /* <<<<< 修改點：將比分數字的最大尺寸從 220px 調降至 160px，進一步縮小 >>>>> */
+    const px = Math.max(110, Math.min(160, Math.round(minSide * 0.22))); 
     document.documentElement.style.setProperty('--score-size', px + 'px');
   }
-
+  
   document.addEventListener('fullscreenchange',()=>{
     if(document.fullscreenElement){
+      stage.classList.add('fullscreen-adjust');
       setFSScoreSize();
       showBarTemporarily();
       if(!resizeHandlerAttached){
@@ -750,6 +748,7 @@
         resizeHandlerAttached=true;
       }
     }else{
+      stage.classList.remove('fullscreen-adjust');
       ctrlBar.classList.remove('hidden');
       if(hideTimer) clearTimeout(hideTimer);
       document.documentElement.style.removeProperty('--score-size');
@@ -808,7 +807,6 @@
       names.BR = get(nameInputs.BR.value, useDefaultsIfEmpty?'紅隊選手2':'') || '';
     }
     
-    // 檢查雙打模式下選手姓名是否為空
     if (state.mode === 'doubles' && (!names.TL || !names.BL)) {
       alert('雙打模式至少需輸入兩隊的主要選手名稱！');
       return;
