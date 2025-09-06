@@ -139,10 +139,9 @@
     pointer-events: none;
     z-index: 5;
   }
-  /* <<<<< 修改點：再次加大圖示尺寸 >>>>> */
   .court-logo, .court-shuttle {
-    width: 54px; /* 從 46px 加大 */
-    height: 54px; /* 從 46px 加大 */
+    width: 46px;
+    height: 46px;
   }
   .court-shuttle {
     animation: bounce 0.8s infinite alternate;
@@ -153,20 +152,30 @@
   }
 
 
-  /* ========= 中央 HUD（比分） ========= */
-  .hud{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:center;
-    padding:12px 18px; border-radius:16px;
-    background:var(--glass);
-    border:1px solid #9fd9d64d; box-shadow: var(--shadow-md); z-index:6;
+  /* ========== 上下計分板 ========== */
+  .score-display {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    background: var(--glass);
+    border: 1px solid #9fd9d64d;
+    box-shadow: var(--shadow-md);
+    z-index: 6;
     backdrop-filter: blur(10px) saturate(120%);
-    transition: all .2s ease-out; 
   }
-
-  .stage.fullscreen-adjust .hud {
-    padding: 8px 12px; 
-    gap: 10px; 
+  .score-display.top-score {
+    top: 28px;
+  }
+  .score-display.bottom-score {
+    bottom: 28px;
+    flex-direction: column; 
+    gap: 8px;
+    padding: 10px 16px;
   }
 
   .score-section {
@@ -317,15 +326,41 @@
       color: #333;
   }
 
-  /* ========= 手機微調 ========= */
-  @media (max-width:640px){
-    .btn,.seg>button{ font-size:13px; --pad-y:10px; --pad-x:12px }
-    .chip{ font-size:11px }
-    .hud { flex-direction: column; }
-    .hud .score-section { order: -1; }
-    .hud .chip { order: 0; }
-    .hud .badge { order: 1; }
+  /* <<<<< 修改點：全新的全螢幕排版邏輯 >>>>> */
+  /* 桌機版全螢幕：放大字體 */
+  .stage.fullscreen-adjust {
+    --score-size: 160px;
   }
+  /* 手機版全螢幕：重新排版到角落 */
+  @media (max-width: 768px) {
+      .stage.fullscreen-adjust {
+          --score-size: 25vw; /* 字體大小與螢幕寬度連動 */
+      }
+      .stage.fullscreen-adjust .score-display {
+          transform: none; /* 取消水平置中 */
+          gap: 8px;
+          padding: 8px 12px;
+      }
+      .stage.fullscreen-adjust .score-display.top-score {
+          top: 16px;
+          left: 16px;
+      }
+      .stage.fullscreen-adjust .score-display.bottom-score {
+          bottom: 16px;
+          right: 16px;
+          left: auto; /* 覆寫 left: 50% */
+          align-items: flex-end; /* 內容物靠右對齊 */
+      }
+      .stage.fullscreen-adjust .score-display.bottom-score .score-section,
+      .stage.fullscreen-adjust .score-display.bottom-score .chip {
+          align-items: flex-end;
+          justify-content: flex-end;
+      }
+      .stage.fullscreen-adjust .score-display.bottom-score .score-section {
+        flex-direction: column-reverse; /* 讓分數在名字下面 */
+      }
+  }
+
 </style>
 </head>
 <body>
@@ -352,7 +387,18 @@
             <img src="shuttle.png" alt="發球" class="court-shuttle">
           </div>
         </div>
+        <div class="score-display top-score">
+          <div class="score-section">
+            <div class="team-info">
+              <span class="role" id="topPlayerNames"></span>
+            </div>
+            <div class="score" id="scoreTop">
+              <span class="num" id="numTop">0</span>
+            </div>
+          </div>
+        </div>
       </div>
+
       <div class="half bottom" id="halfBottom">
         <div class="cell" data-half="bottom" data-col="left">
           <span class="player-label" id="label-BL"></span>
@@ -368,30 +414,21 @@
             <img src="shuttle.png" alt="發球" class="court-shuttle">
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="hud" id="hud">
-      <div class="score-section">
-        <div class="team-info">
-          <span class="role" id="topPlayerNames"></span>
-        </div>
-        <div class="score" id="scoreTop">
-          <span class="num" id="numTop">0</span>
+        <div class="score-display bottom-score">
+          <div class="score-section">
+            <div class="team-info">
+              <span class="role" id="bottomPlayerNames"></span>
+            </div>
+            <div class="score" id="scoreBottom">
+              <span class="num" id="numBottom">0</span>
+            </div>
           </div>
-      </div>
-      <span class="chip">
-        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 1-9 9a9.01 9.01 0 0 1 9-9m0 2a7 7 0 1 0 7 7a7 7 0 0 0-7-7m.75 3v4.25L16 14l-1.5 1.25L11 12.5V8z"/></svg>
-        <span>發球：<strong id="servingSideLabel">下方</strong></span>
-      </span>
-      <span id="pointBadge" class="badge">局點 / 賽末點</span>
-      <div class="score-section">
-        <div class="team-info">
-          <span class="role" id="bottomPlayerNames"></span>
+          <span class="chip">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 1-9 9a9.01 9.01 0 0 1 9-9m0 2a7 7 0 1 0 7 7a7 7 0 0 0-7-7m.75 3v4.25L16 14l-1.5 1.25L11 12.5V8z"/></svg>
+            <span>發球：<strong id="servingSideLabel">下方</strong></span>
+          </span>
+          <span id="pointBadge" class="badge">局點 / 賽末點</span>
         </div>
-        <div class="score" id="scoreBottom">
-          <span class="num" id="numBottom">0</span>
-          </div>
       </div>
     </div>
   </section>
@@ -728,32 +765,19 @@
     if(hideTimer) clearTimeout(hideTimer);
     hideTimer=setTimeout(()=> ctrlBar.classList.add('hidden'), 2600);
   }
+
+  /* <<<<< 修改點：移除動態計算，全螢幕字體大小由 CSS 控制 >>>>> */
   function setFSScoreSize(){
-    const minSide = Math.min(window.innerWidth, window.innerHeight);
-    const px = Math.max(110, Math.min(160, Math.round(minSide * 0.22)));
-    document.documentElement.style.setProperty('--score-size', px + 'px');
+    // This function is now only responsible for triggering the CSS variables.
+    // The actual sizes are set in the CSS for better responsiveness.
   }
   
   document.addEventListener('fullscreenchange',()=>{
-    if(document.fullscreenElement){
-      stage.classList.add('fullscreen-adjust');
-      setFSScoreSize();
+    const isFullscreen = !!document.fullscreenElement;
+    stage.classList.toggle('fullscreen-adjust', isFullscreen);
+    
+    if(isFullscreen){
       showBarTemporarily();
-      if(!resizeHandlerAttached){
-        window.addEventListener('resize', setFSScoreSize, {passive:true});
-        window.addEventListener('orientationchange', setFSScoreSize, {passive:true});
-        resizeHandlerAttached=true;
-      }
-    }else{
-      stage.classList.remove('fullscreen-adjust');
-      ctrlBar.classList.remove('hidden');
-      if(hideTimer) clearTimeout(hideTimer);
-      document.documentElement.style.removeProperty('--score-size');
-      if(resizeHandlerAttached){
-        window.removeEventListener('resize', setFSScoreSize);
-        window.removeEventListener('orientationchange', setFSScoreSize);
-        resizeHandlerAttached=false;
-      }
     }
   });
   ['pointermove','touchstart','click','keydown'].forEach(ev=>{
