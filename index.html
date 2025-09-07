@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>羽球計分板 · Green</title>
+<title>羽球計分板 · Green Court</title>
 <style>
   /* ========= 全新主題：經典綠色球場 ========= */
   :root{
@@ -56,17 +56,19 @@
 
   /* ========= 球場繪製 (綠色場地) ========= */
   .court{position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr}
+  /* <<<<< 修改點：新增模擬地墊紋理 >>>>> */
   .court::before{
     content:""; position:absolute; inset:0;
-    /* 場地漸層 */
-    background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(0,0,0,0.1));
+    /* 紋理層：使用 SVG 製造細微的雜訊感 */
+    background-image: 
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23ffffff' fill-opacity='0.03' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E"),
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(0,0,0,0.1));
     pointer-events:none;
   }
   .half{
     position:relative; display:grid; grid-template-columns:1fr 1fr;
     border-left:2px solid var(--line); border-right:2px solid var(--line);
   }
-  /* <<<<< 修改點：全新球網設計 >>>>> */
   .net{
     position:absolute; left:0; right:0; top:50%;
     height: 14px;
@@ -135,7 +137,6 @@
       to { transform: translateY(-5px); }
   }
 
-
   /* ========= 置中計分板 HUD ========== */
   .hud{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
@@ -177,7 +178,7 @@
   }
   .badge{
     display:none; padding:6px 10px; border-radius:999px;
-    border:1px solid #e0b483; background:#fff2e0cc; color:#8a4f00; 
+    border:1px solid var(--accent-dark); background: #fff5e6cc; color:#8a4f00; 
     font-size:12px; font-weight:700; box-shadow: var(--shadow-sm)
   }
   .badge.show{display:inline-flex}
@@ -222,7 +223,7 @@
   .btn:active, .seg > button:active{ transform:translateY(1px) }
   .btn.jelly:hover, .seg > button.jelly:hover{ animation: jelly .5s ease-out both }
   .btn.ok{
-    background:linear-gradient(180deg, #ffe0b3, #ffc77d);
+    background:linear-gradient(180deg, #ffe0b3, var(--accent));
     border-color: var(--accent-dark); color:#5e401a;
     box-shadow: 0 2px 0 #ffffff inset, 0 10px 20px #ffc77d88;
   }
@@ -275,7 +276,7 @@
   }
   .mini-net{ position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent, var(--muted), transparent) }
   .mini-half{ display:grid; grid-template-columns:1fr 1fr; border-left:2px solid var(--line); border-right:2px solid var(--line) }
-  .pos{ position:relative; border:1px dashed #dcd3c8; display:flex; align-items:center; justify-content:center; padding:8px }
+  .pos{ position:relative; border:1px dashed rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; padding:8px }
   .pos label{ position:absolute; top:6px; left:6px; font-size:12px; color: #fff; text-shadow: 0 1px 1px #0005;}
   .pos input{
     width:92%; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid #dcd3c8;
