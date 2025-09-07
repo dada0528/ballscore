@@ -153,7 +153,7 @@
   .score{display:flex; align-items:baseline; gap:8px; font-variant-numeric:tabular-nums}
   .role{opacity:.8; font-size:13px; letter-spacing:.4px; color: var(--muted)}
   .num{
-    display:inline-block; min-width:2.8ch; text-align:center;
+    display:inline-block;
     font-size:var(--score-size); line-height:1; font-weight:900; letter-spacing:.6px;
     color: var(--text);
     text-shadow:0 1px 1px rgba(255,255,255,.5);
@@ -279,8 +279,19 @@
   
   /* 全螢幕模式 */
   .stage.fullscreen-adjust {
-    --score-size: 130px;
+    --score-size: 25vmin; 
   }
+  .stage.fullscreen-adjust .num {
+      min-width: 0; 
+  }
+  @media (max-width: 768px) {
+    .stage.fullscreen-adjust .hud {
+        flex-direction: column; 
+        gap: 8px;
+        width: 95%; 
+    }
+  }
+
 </style>
 </head>
 <body>
