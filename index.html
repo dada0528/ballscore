@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>羽球計分板 · Green Court</title>
 <style>
-  /* ========= 全新主題：經典綠色球場 ========= */
+  /* ========= 主題：經典綠色球場 ========= */
   :root{
     /* 色系 (經典綠 + 柔和黃) */
     --court-green: #3d8b83;   /* 球場綠 */
@@ -56,10 +56,8 @@
 
   /* ========= 球場繪製 (綠色場地) ========= */
   .court{position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr}
-  /* <<<<< 修改點：新增模擬地墊紋理 >>>>> */
   .court::before{
     content:""; position:absolute; inset:0;
-    /* 紋理層：使用 SVG 製造細微的雜訊感 */
     background-image: 
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23ffffff' fill-opacity='0.03' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E"),
       radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(0,0,0,0.1));
@@ -75,10 +73,10 @@
     transform: translateY(-50%);
     background: 
       linear-gradient(to bottom, 
-        rgba(0,0,0,0.2) 0, rgba(0,0,0,0) 1px, /* 頂部陰影 */
-        #fff 1px, #fff 4px, /* 白色頂邊 */
-        #e0e0e0 4px, #e0e0e0 5px, /* 頂邊底部線 */
-        rgba(60,60,60,0.6) 5px /* 網身 */
+        rgba(0,0,0,0.2) 0, rgba(0,0,0,0) 1px, 
+        #fff 1px, #fff 4px, 
+        #e0e0e0 4px, #e0e0e0 5px, 
+        rgba(60,60,60,0.6) 5px
       );
     z-index:3;
     -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
@@ -102,12 +100,10 @@
   .cell:hover{
     background: rgba(255,255,255,.1);
   }
-  /* 發球格高亮 */
   .cell.serve{
     background: radial-gradient(circle, rgba(255, 199, 125, 0.7) 0%, rgba(255, 199, 125, 0) 70%) !important;
   }
 
-  /* 角落姓名貼紙 */
   .player-label{
     position:absolute; inset:auto 8px 8px auto;
     font-size:12px; color: var(--text);
@@ -118,7 +114,6 @@
   }
   .half.top .player-label{ inset:8px 8px auto auto }
 
-  /* ========== 發球指示圖示 ========== */
   .icon-container {
     position: absolute;
     top: 50%; left: 50%;
@@ -137,7 +132,7 @@
       to { transform: translateY(-5px); }
   }
 
-  /* ========= 置中計分板 HUD ========== */
+  /* 置中計分板 HUD */
   .hud{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
     display:flex; align-items:center; gap:12px;
@@ -183,7 +178,7 @@
   }
   .badge.show{display:inline-flex}
 
-  /* ========= 底部控制列 ========= */
+  /* 底部控制列 */
   footer#ctrlBar{
     position:fixed; left:0; right:0; bottom:0; height:var(--bar); z-index:40;
     display:flex; align-items:center; justify-content:center;
@@ -201,14 +196,7 @@
   }
   .bar::-webkit-scrollbar{display:none}
 
-  /* ========= 按鈕 ========= */
-  @keyframes jelly {
-    0% { transform: scale(1,1); }
-    30%{ transform: scale(1.06, .94); }
-    55%{ transform: scale(.98, 1.02); }
-    75%{ transform: scale(1.02, .99); }
-    100%{ transform: scale(1,1); }
-  }
+  /* 按鈕 */
   .btn, .seg > button{
     --pad-x:16px; --pad-y:11px;
     display:inline-flex; align-items:center; gap:8px;
@@ -222,6 +210,7 @@
   .btn:hover, .seg > button:hover{ background:linear-gradient(180deg,#ffffff,#efe9e2) }
   .btn:active, .seg > button:active{ transform:translateY(1px) }
   .btn.jelly:hover, .seg > button.jelly:hover{ animation: jelly .5s ease-out both }
+  @keyframes jelly { 0% {transform:scale(1,1);} 30%{transform:scale(1.06,.94);} 55%{transform:scale(.98,1.02);} 75%{transform:scale(1.02,.99);} 100%{transform:scale(1,1);} }
   .btn.ok{
     background:linear-gradient(180deg, #ffe0b3, var(--accent));
     border-color: var(--accent-dark); color:#5e401a;
@@ -242,7 +231,7 @@
   #ctrlBar.hidden .bar{ transform:translateY(120%); opacity:.98; transition:all .25s ease }
   #ctrlBar .bar{ transform:translateY(0); opacity:1; transition:all .25s ease }
 
-  /* ========= 彈窗 ========= */
+  /* 彈窗 */
   .modal{
     position:fixed; inset:0; display:none; place-items:center; z-index:1000;
     background:rgba(61, 139, 131, .35); backdrop-filter: blur(6px);
@@ -258,7 +247,7 @@
   .dialog p{ color: var(--muted); margin:0 0 16px }
   .dialog .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap }
 
-  /* ========= 開場設定 ========= */
+  /* 開場設定 */
   .setup{ position:fixed; inset:0; display:none; place-items:center; z-index:900;
           background:rgba(61, 139, 131, .35); backdrop-filter: blur(6px); }
   .setup.visible{ display:grid }
@@ -287,12 +276,11 @@
       display: flex; flex-direction: column;
       align-items: center; gap: 10px; margin-top: 15px;
   }
-
-  /* ========= 全螢幕 ========= */
+  
+  /* 全螢幕模式 */
   .stage.fullscreen-adjust {
-    --score-size: 130px; /* 全螢幕時的字體大小 */
+    --score-size: 130px;
   }
-
 </style>
 </head>
 <body>
