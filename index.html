@@ -3,29 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>羽球計分板 · Fresh</title>
+<title>羽球計分板 · Green</title>
 <style>
-  /* ========= 清新主題 ========= */
+  /* ========= 全新主題：經典綠色球場 ========= */
   :root{
-    /* 色系（清新薄荷＋蒂芬妮綠 + 柔霧灰） */
-    --bg-1:#e8f5f3;          /* 背景最底層 */
-    --bg-2:#f5fbfa;          /* 主背景 */
-    --card:#ffffffee;        /* 玻璃卡片 */
-    --glass:#ffffffbb;       /* 薄玻璃 */
-    --line:#7fbac0;          /* 球場白線（淡綠） */
-    --net:#94cfd4;           /* 球網 */
-    --text:#1b2b2d;          /* 主要字色 */
-    --muted:#5f8084;         /* 次要字色 */
-    --accent:#43c7ba;        /* 強調（蒂芬妮綠系） */
-    --accent-2:#a7efe7;      /* 次強調（薄荷） */
-    --warn:#ffb84d;          /* 局點/提醒 */
-    --danger:#ff5d5d;        /* 20+ 紅色 */
+    /* 色系 (經典綠 + 柔和黃) */
+    --court-green: #3d8b83;   /* 球場綠 */
+    --line: #ffffffcc;       /* 球場白線 */
+    --text: #213d3a;         /* 深綠文字 */
+    --muted: #5e7d7a;        /* 淺綠文字 */
+    --accent: #ffc77d;       /* 柔和黃 (強調) */
+    --accent-dark: #b5864c;   /* 深黃 */
+    --glass: #f0f5f4aa;       /* 磨砂玻璃 (冷白) */
+    --danger:#d95d5d;        /* 20+ 紅色 */
 
-    /* 發球格：蒂芬妮綠 */
-    --serve-tile:#81D8D0; 
-    --serve-border:#c8f1ed;
-
-    /* 控制列 & 字體大小（會被 JS 覆寫全螢幕尺寸） */
+    /* 控制列 & 字體大小 */
     --bar:74px;
     --score-size:58px;
 
@@ -35,16 +27,13 @@
     --shadow-sm: 0 6px 14px rgba(0,0,0,.08);
   }
 
-  /* 背景：清新漸層 + 柔和光暈 */
+  /* 背景 */
   html,body{height:100dvh}
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC","PingFang TC",sans-serif;
     color:var(--text);
-    background:
-      radial-gradient(900px 520px at 10% -15%, #bff5ef88, transparent 60%),
-      radial-gradient(900px 520px at 100% 110%, #dffcf88f, transparent 60%),
-      linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    background: #e8eceb; /* 淺灰綠背景 */
     overflow:hidden;
   }
 
@@ -59,170 +48,141 @@
     height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 12px);
     max-width:100vw; max-height:calc(100dvh - var(--bar) - max(0px, env(safe-area-inset-bottom)) - 12px);
     border-radius:20px; overflow:hidden;
-    border:1px solid #9fd9d633;
-    background: linear-gradient(160deg,#f8fffe,#f1fbfa 55%, #eaf8f6);
+    border:1px solid rgba(0,0,0,.1);
+    background: var(--court-green);
     box-shadow: var(--shadow-lg);
     aspect-ratio:16/9;
   }
 
-  /* ========= 球場繪製（清新木地板感） ========= */
+  /* ========= 球場繪製 (綠色場地) ========= */
   .court{position:absolute; inset:0; display:grid; grid-template-rows:1fr 1fr}
   .court::before{
     content:""; position:absolute; inset:0;
-    background:
-      repeating-linear-gradient( 90deg, #e9f7f5 0 6px, #f2fcfb 6px 12px),
-      linear-gradient(180deg,#f7fffe,#f1fbfa);
-    opacity:.8; pointer-events:none;
+    /* 場地漸層 */
+    background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(0,0,0,0.1));
+    pointer-events:none;
   }
   .half{
     position:relative; display:grid; grid-template-columns:1fr 1fr;
     border-left:2px solid var(--line); border-right:2px solid var(--line);
   }
-  .half.top{ background:linear-gradient(180deg,#f3fbfa,#ecf8f7); }
-  .half.bottom{ background:linear-gradient(0deg,#f3fbfa,#ecf8f7); }
+  /* <<<<< 修改點：全新球網設計 >>>>> */
   .net{
-    position:absolute; left:0; right:0; top:50%; height:3px; z-index:3;
-    background:linear-gradient(90deg,transparent,var(--net) 18%,var(--net) 82%,transparent);
-    box-shadow:0 0 10px #9fd9d977;
+    position:absolute; left:0; right:0; top:50%;
+    height: 14px;
+    transform: translateY(-50%);
+    background: 
+      linear-gradient(to bottom, 
+        rgba(0,0,0,0.2) 0, rgba(0,0,0,0) 1px, /* 頂部陰影 */
+        #fff 1px, #fff 4px, /* 白色頂邊 */
+        #e0e0e0 4px, #e0e0e0 5px, /* 頂邊底部線 */
+        rgba(60,60,60,0.6) 5px /* 網身 */
+      );
+    z-index:3;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
   }
   .court-outer{
-    position:absolute; inset:22px; border:2px solid var(--line); border-radius:12px; z-index:0;
-    box-shadow: inset 0 0 0 2px #9fd9d633;
+    position:absolute; inset:22px; border:3px solid var(--line); border-radius:12px; z-index:0;
     pointer-events:none;
   }
   .court-inner{
-    position:absolute; left:22px; right:22px; top:calc(22px + 2px); bottom:calc(22px + 2px);
+    position:absolute; left:22px; right:22px; top:calc(22px + 3px); bottom:calc(22px + 3px);
     border-top:2px solid var(--line); border-bottom:2px solid var(--line);
     pointer-events:none;
   }
 
   .cell{
     position:relative; cursor:pointer; user-select:none;
-    border:1px solid #83cfc833;
-    transition:transform .02s ease, box-shadow .2s ease, background .18s ease, outline-color .18s ease;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.2));
+    border:1px solid rgba(255,255,255,.2);
+    transition: background .2s ease;
   }
-  .cell:active{ transform:scale(.996); }
-
-  /* 發球格（單格高亮：蒂芬妮綠玻璃） */
+  .cell:hover{
+    background: rgba(255,255,255,.1);
+  }
+  /* 發球格高亮 */
   .cell.serve{
-    background:linear-gradient(180deg, rgba(129,216,208,.95), rgba(100,190,180,.9)) !important;
-    outline:3px solid var(--serve-border);
-    box-shadow:
-      inset 0 0 0 9999px rgba(129,216,208,.08),
-      0 0 0 1px rgba(0,0,0,.06),
-      0 10px 24px rgba(44,159,148,.25);
+    background: radial-gradient(circle, rgba(255, 199, 125, 0.7) 0%, rgba(255, 199, 125, 0) 70%) !important;
   }
 
-  /* 角落姓名貼紙（清新玻璃） */
+  /* 角落姓名貼紙 */
   .player-label{
     position:absolute; inset:auto 8px 8px auto;
-    font-size:12px; color:#214245;
-    background:linear-gradient(180deg,#ffffffeb,#ffffffd0);
-    border:1px solid #9fd9d64d; border-radius:10px;
+    font-size:12px; color: var(--text);
+    background: rgba(255,255,255,.5);
+    border:1px solid rgba(255,255,255,.7); border-radius:10px;
     padding:3px 8px; pointer-events:none;
     box-shadow: var(--shadow-sm);
   }
   .half.top .player-label{ inset:8px 8px auto auto }
 
-  /* ========== 放在場地上的圖示 ========== */
+  /* ========== 發球指示圖示 ========== */
   .icon-container {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    /* transform is now set below */
+    top: 50%; left: 50%;
     display: none; 
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    pointer-events: none;
-    z-index: 5;
+    align-items: center; justify-content: center;
+    gap: 8px; pointer-events: none; z-index: 5;
     transition: transform 0.3s ease;
   }
-  /* <<<<< 修改點：將圖示往左右推開 >>>>> */
-  .cell[data-col="left"] .icon-container {
-      transform: translate(-80%, -50%); /* 往左推 */
-  }
-  .cell[data-col="right"] .icon-container {
-      transform: translate(-20%, -50%); /* 往右推 */
-  }
+  .cell[data-col="left"] .icon-container { transform: translate(-80%, -50%); }
+  .cell[data-col="right"] .icon-container { transform: translate(-20%, -50%); }
 
-  .court-logo, .court-shuttle {
-    width: 46px;
-    height: 46px;
-  }
-  .court-shuttle {
-    animation: bounce 0.8s infinite alternate;
-  }
+  .court-logo, .court-shuttle { width: 54px; height: 54px; }
+  .court-shuttle { animation: bounce 0.8s infinite alternate; }
   @keyframes bounce {
       from { transform: translateY(0); }
       to { transform: translateY(-5px); }
   }
 
 
-  /* ========== 上下計分板 ========== */
-  .score-display {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 8px 16px;
-    border-radius: 16px;
+  /* ========= 置中計分板 HUD ========== */
+  .hud{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px; border-radius:16px;
     background: var(--glass);
-    border: 1px solid #9fd9d64d;
-    box-shadow: var(--shadow-md);
-    z-index: 6;
+    border: 1px solid rgba(255,255,255,.5);
+    box-shadow: var(--shadow-md); z-index:6;
     backdrop-filter: blur(10px) saturate(120%);
   }
-  .score-display.top-score {
-    top: 28px;
-  }
-  .score-display.bottom-score {
-    bottom: 28px;
-    flex-direction: column; 
-    gap: 8px;
-    padding: 10px 16px;
-  }
-
   .score-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 5px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 5px;
   }
   .team-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    display: flex; align-items: center;
+    justify-content: center; gap: 8px;
   }
   .score{display:flex; align-items:baseline; gap:8px; font-variant-numeric:tabular-nums}
-  .role{opacity:.8; font-size:13px; letter-spacing:.4px}
+  .role{opacity:.8; font-size:13px; letter-spacing:.4px; color: var(--muted)}
   .num{
-    display:inline-block; min-width:3.2ch; text-align:center;
+    display:inline-block; min-width:2.8ch; text-align:center;
     font-size:var(--score-size); line-height:1; font-weight:900; letter-spacing:.6px;
-    color:#153d3f;
-    text-shadow:0 2px 0 #fff7, 0 0 8px #b3ebe6aa;
+    color: var(--text);
+    text-shadow:0 1px 1px rgba(255,255,255,.5);
     transition: font-size .2s ease;
   }
-  .num.danger{ color:var(--danger); text-shadow: 0 0 14px rgba(255,80,80,.25); }
+  .num.danger{ color:var(--danger); }
+  .info-stack {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+  }
   .chip{
     display:inline-flex; align-items:center; gap:8px;
     padding:6px 12px; border-radius:999px;
-    background:#ffffffcc; border:1px solid #9fd9d64d; font-size:12px; color:#1b2b2d;
+    background:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.7); 
+    font-size:12px; color: var(--text);
     box-shadow: var(--shadow-sm);
   }
   .badge{
     display:none; padding:6px 10px; border-radius:999px;
-    border:1px solid #ffc08a; background:#fff2e0cc; color:#8a4f00; 
+    border:1px solid #e0b483; background:#fff2e0cc; color:#8a4f00; 
     font-size:12px; font-weight:700; box-shadow: var(--shadow-sm)
   }
   .badge.show{display:inline-flex}
 
-  /* ========= 底部控制列（浮動果凍） ========= */
+  /* ========= 底部控制列 ========= */
   footer#ctrlBar{
     position:fixed; left:0; right:0; bottom:0; height:var(--bar); z-index:40;
     display:flex; align-items:center; justify-content:center;
@@ -233,15 +193,14 @@
     pointer-events:auto;
     max-width:min(980px, 96vw);
     min-height:56px;
-    background:linear-gradient(180deg,#ffffffee,#ffffffd8);
-    border:1px solid #9fd9d64d; border-radius:16px; box-shadow: var(--shadow-md);
+    background: linear-gradient(180deg, #f8f5f1, #f2ede8);
+    border:1px solid #dcd3c8; border-radius:16px; box-shadow: var(--shadow-md);
     display:flex; gap:10px; align-items:center; padding:8px 10px; overflow:auto;
     -webkit-overflow-scrolling:touch; scrollbar-width:none;
-    backdrop-filter: blur(8px) saturate(120%);
   }
   .bar::-webkit-scrollbar{display:none}
 
-  /* ========= Jelly 果凍按鈕 ========= */
+  /* ========= 按鈕 ========= */
   @keyframes jelly {
     0% { transform: scale(1,1); }
     30%{ transform: scale(1.06, .94); }
@@ -253,87 +212,86 @@
     --pad-x:16px; --pad-y:11px;
     display:inline-flex; align-items:center; gap:8px;
     padding:var(--pad-y) var(--pad-x); border-radius:14px;
-    font-size:14px; border:1px solid #9fd9d64d; color:#184344;
-    background:linear-gradient(180deg,#ffffff,#f6fffd);
+    font-size:14px; border:1px solid #dcd3c8; color: var(--text);
+    background:linear-gradient(180deg,#ffffff,#f6f2ed);
     cursor:pointer; white-space:nowrap;
-    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .08s ease;
+    transition: all .2s ease;
     box-shadow: 0 2px 0 #ffffff inset, var(--shadow-sm);
   }
-  .btn:hover, .seg > button:hover{ background:linear-gradient(180deg,#ffffff,#effcf9) }
+  .btn:hover, .seg > button:hover{ background:linear-gradient(180deg,#ffffff,#efe9e2) }
   .btn:active, .seg > button:active{ transform:translateY(1px) }
   .btn.jelly:hover, .seg > button.jelly:hover{ animation: jelly .5s ease-out both }
   .btn.ok{
-    background:linear-gradient(180deg,#eafffd,#d7fbf4);
-    border-color:#8fe7dc; color:#0e6c65;
-    box-shadow: 0 2px 0 #ffffff inset, 0 10px 20px #7de3d23a;
+    background:linear-gradient(180deg, #ffe0b3, #ffc77d);
+    border-color: var(--accent-dark); color:#5e401a;
+    box-shadow: 0 2px 0 #ffffff inset, 0 10px 20px #ffc77d88;
   }
   .seg{
     display:inline-flex; padding:3px; gap:6px; border-radius:14px;
-    background:#ffffff; border:1px solid #9fd9d64d;
+    background:#e6e0d9; border:1px solid #dcd3c8;
     box-shadow: var(--shadow-sm);
   }
-  .seg > button{ background:transparent; border:0; color:#3a6f72 }
+  .seg > button{ background:transparent; border:0; color: var(--muted) }
   .seg > button.active{
-    background:linear-gradient(180deg,#eafffd,#ddfcf5); 
-    color:#0c615a; font-weight:700; border-radius:10px; padding:10px 14px;
-    box-shadow: inset 0 0 0 1px #b5f1ea, 0 6px 14px #7de3d22a;
+    background:linear-gradient(180deg, #f8f5f1, #ffffff); 
+    color: var(--text); font-weight:700; border-radius:10px; padding:10px 14px;
+    box-shadow: inset 0 0 0 1px #ffffff, 0 6px 14px rgba(0,0,0,.08);
   }
 
-  /* 全螢幕自動隱藏（只把整條往下推，不藏內容） */
   #ctrlBar.hidden .bar{ transform:translateY(120%); opacity:.98; transition:all .25s ease }
   #ctrlBar .bar{ transform:translateY(0); opacity:1; transition:all .25s ease }
 
-  /* ========= 贏家彈窗（清新玻璃） ========= */
+  /* ========= 彈窗 ========= */
   .modal{
     position:fixed; inset:0; display:none; place-items:center; z-index:1000;
-    background:rgba(171, 223, 216, .35); backdrop-filter: blur(6px);
+    background:rgba(61, 139, 131, .35); backdrop-filter: blur(6px);
   }
   .modal.visible{ display:grid }
   .dialog{
     width:min(90vw, 440px);
-    background:linear-gradient(180deg,#ffffffee,#ffffffd6);
-    border:1px solid #9fd9d64d; border-radius:20px;
+    background:linear-gradient(180deg,#f8f5f1ee,#fdfcfbe6);
+    border:1px solid #dcd3c8; border-radius:20px;
     padding:18px 18px 14px; box-shadow: var(--shadow-lg); text-align:center;
   }
-  .dialog h2{ font-size:24px; margin-bottom:6px; color:#0e4e4a }
-  .dialog p{ color:#2b5e60; margin:0 0 16px }
+  .dialog h2{ font-size:24px; margin-bottom:6px; color: var(--text) }
+  .dialog p{ color: var(--muted); margin:0 0 16px }
   .dialog .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap }
 
-  /* ========= 開場姓名設定（清新玻璃） ========= */
+  /* ========= 開場設定 ========= */
   .setup{ position:fixed; inset:0; display:none; place-items:center; z-index:900;
-          background:rgba(171, 223, 216, .35); backdrop-filter: blur(6px); }
+          background:rgba(61, 139, 131, .35); backdrop-filter: blur(6px); }
   .setup.visible{ display:grid }
   .setup-card{
     width:min(820px, 92vw);
-    background:linear-gradient(180deg,#ffffffee,#ffffffd6);
-    border:1px solid #9fd9d64d; border-radius:20px; padding:16px; 
+    background:linear-gradient(180deg,#f8f5f1ee,#fdfcfbe6);
+    border:1px solid #dcd3c8; border-radius:20px; padding:16px; 
     box-shadow: var(--shadow-lg);
   }
   .setup-head{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px }
   .mini-court{
     position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden;
-    background:#f0fbf9; border:1px solid #9fd9d64d; box-shadow: inset 0 0 0 1px #9fd9d633;
+    background: var(--court-green); border:1px solid #dcd3c8;
     display:grid; grid-template-rows:1fr 1fr; margin-bottom:12px;
   }
-  .mini-net{ position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent,var(--net) 18%,var(--net) 82%,transparent) }
+  .mini-net{ position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg,transparent, var(--muted), transparent) }
   .mini-half{ display:grid; grid-template-columns:1fr 1fr; border-left:2px solid var(--line); border-right:2px solid var(--line) }
-  .pos{ position:relative; border:1px dashed #9fd9d666; display:flex; align-items:center; justify-content:center; padding:8px }
-  .pos label{ position:absolute; top:6px; left:6px; font-size:12px; color:#437d81 }
+  .pos{ position:relative; border:1px dashed #dcd3c8; display:flex; align-items:center; justify-content:center; padding:8px }
+  .pos label{ position:absolute; top:6px; left:6px; font-size:12px; color: #fff; text-shadow: 0 1px 1px #0005;}
   .pos input{
-    width:92%; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid #9fd9d66e;
-    background:#ffffff; color:#1b2b2d; outline:none; box-shadow: var(--shadow-sm);
+    width:92%; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid #dcd3c8;
+    background:#fff; color: var(--text); outline:none; box-shadow: var(--shadow-sm);
   }
   .setup-actions{ display:flex; gap:10px; justify-content:flex-end }
   .start-options {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-top: 15px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px; margin-top: 15px;
   }
-  .start-options strong {
-      color: #333;
+
+  /* ========= 全螢幕 ========= */
+  .stage.fullscreen-adjust {
+    --score-size: 130px; /* 全螢幕時的字體大小 */
   }
+
 </style>
 </head>
 <body>
@@ -360,18 +318,7 @@
             <img src="shuttle.png" alt="發球" class="court-shuttle">
           </div>
         </div>
-        <div class="score-display top-score">
-          <div class="score-section">
-            <div class="team-info">
-              <span class="role" id="topPlayerNames"></span>
-            </div>
-            <div class="score" id="scoreTop">
-              <span class="num" id="numTop">0</span>
-            </div>
-          </div>
-        </div>
       </div>
-
       <div class="half bottom" id="halfBottom">
         <div class="cell" data-half="bottom" data-col="left">
           <span class="player-label" id="label-BL"></span>
@@ -387,20 +334,31 @@
             <img src="shuttle.png" alt="發球" class="court-shuttle">
           </div>
         </div>
-        <div class="score-display bottom-score">
-          <div class="score-section">
-            <div class="team-info">
-              <span class="role" id="bottomPlayerNames"></span>
-            </div>
-            <div class="score" id="scoreBottom">
-              <span class="num" id="numBottom">0</span>
-            </div>
-          </div>
-          <span class="chip">
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 1-9 9a9.01 9.01 0 0 1 9-9m0 2a7 7 0 1 0 7 7a7 7 0 0 0-7-7m.75 3v4.25L16 14l-1.5 1.25L11 12.5V8z"/></svg>
-            <span>發球：<strong id="servingSideLabel">下方</strong></span>
-          </span>
-          <span id="pointBadge" class="badge">局點 / 賽末點</span>
+      </div>
+    </div>
+    
+    <div class="hud" id="hud">
+      <div class="score-section">
+        <div class="team-info">
+          <span class="role" id="topPlayerNames"></span>
+        </div>
+        <div class="score" id="scoreTop">
+          <span class="num" id="numTop">0</span>
+        </div>
+      </div>
+      <div class="info-stack">
+        <span class="chip">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 1-9 9a9.01 9.01 0 0 1 9-9m0 2a7 7 0 1 0 7 7a7 7 0 0 0-7-7m.75 3v4.25L16 14l-1.5 1.25L11 12.5V8z"/></svg>
+          <span>發球：<strong id="servingSideLabel">下方</strong></span>
+        </span>
+        <span id="pointBadge" class="badge">局點 / 賽末點</span>
+      </div>
+      <div class="score-section">
+        <div class="team-info">
+          <span class="role" id="bottomPlayerNames"></span>
+        </div>
+        <div class="score" id="scoreBottom">
+          <span class="num" id="numBottom">0</span>
         </div>
       </div>
     </div>
@@ -497,6 +455,7 @@
   const names={TL:'藍隊選手1', TR:'藍隊選手2', BL:'紅隊選手1', BR:'紅隊選手2'};
 
   /* ---------- DOM ---------- */
+  const stage = document.getElementById('stage');
   const numTop = document.getElementById('numTop');
   const numBottom = document.getElementById('numBottom');
   const servingSideLabel = document.getElementById('servingSideLabel');
@@ -724,7 +683,7 @@
     speakSequence([ scoreText(null), servingText() ]);
   });
 
-  /* ---------- 全螢幕＋自動隱藏控制列＋動態比分放大（直/橫皆適用） ---------- */
+  /* ---------- 全螢幕 ---------- */
   function enterFS(){
     (document.documentElement.requestFullscreen?.() || document.body.requestFullscreen?.())?.catch(err=>alert('全螢幕失敗：'+err));
   }
@@ -743,6 +702,9 @@
     stage.classList.toggle('fullscreen-adjust', isFullscreen);
     if(isFullscreen){
       showBarTemporarily();
+    } else {
+      ctrlBar.classList.remove('hidden');
+      if(hideTimer) clearTimeout(hideTimer);
     }
   });
   ['pointermove','touchstart','click','keydown'].forEach(ev=>{
